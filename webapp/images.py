@@ -13,7 +13,12 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+# New season CDN (2025/26): no "p" prefix, premierleague25 path
 PLAYER_PHOTO_URL = (
+    "https://resources.premierleague.com/premierleague25/photos/players/110x140/{code}.png"
+)
+# Legacy CDN (pre-2025 players still served from here with "p" prefix)
+PLAYER_PHOTO_URL_LEGACY = (
     "https://resources.premierleague.com/premierleague/photos/players/110x140/p{code}.png"
 )
 TEAM_BADGE_URL = (
@@ -68,6 +73,8 @@ def download_images(db_path: str) -> None:
     )
 
     # --- Player photos ---
+    # Try new season CDN first (premierleague25, no "p" prefix),
+    # then fall back to legacy CDN (premierleague, "p" prefix).
     player_dir = _STATIC_DIR / "players"
     downloaded = skipped = failed = 0
     for (code,) in player_rows:
@@ -75,8 +82,9 @@ def download_images(db_path: str) -> None:
         if dest.exists():
             skipped += 1
             continue
-        url = PLAYER_PHOTO_URL.format(code=code)
-        ok = _download(url, dest, session)
+        ok = _download(PLAYER_PHOTO_URL.format(code=code), dest, session)
+        if not ok:
+            ok = _download(PLAYER_PHOTO_URL_LEGACY.format(code=code), dest, session)
         if ok:
             downloaded += 1
         else:
