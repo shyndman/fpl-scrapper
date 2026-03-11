@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="py-8">
+
+  <!-- Back link -->
+  <a href="/teams" class="inline-flex items-center gap-1.5 text-sm mb-6 hover:underline" style="color:#64748b;">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+    </svg>
+    All Teams
+  </a>
+
+  <!-- Hero -->
+  <div class="card p-6 mb-8 flex flex-col sm:flex-row gap-6 items-start">
+    <div class="flex-shrink-0 flex flex-col items-center gap-3">
+      <img src="{{ team_badge_url(team.fpl_id) }}"
+           alt="{{ team.name }}"
+           class="badge-img-xl"
+           onerror="this.src='/static/images/placeholder_badge.png'" />
+      <a href="/compare?ids={{ team.fpl_id }}&type=team"
+         class="text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
+         style="background:rgba(0,255,135,0.1); color:#00ff87; border:1px solid rgba(0,255,135,0.3);">
+        + Compare
+      </a>
+    </div>
+
+    <div class="flex-1">
+      <h1 class="text-3xl font-bold mb-1">{{ team.name }}</h1>
+      <p class="text-lg mb-4" style="color:#64748b;">{{ team.short_name }}</p>
+
+      <!-- Strength bars -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {% set strength_bars = [
+          ('Overall Home', team.strength_overall_home),
+          ('Overall Away', team.strength_overall_away),
+          ('Attack Home', team.strength_attack_home),
+          ('Attack Away', team.strength_attack_away),
+          ('Defence Home', team.strength_defence_home),
+          ('Defence Away', team.strength_defence_away),
+        ] %}
+        {% for label, val in strength_bars %}
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span style="color:#64748b;">{{ label }}</span>
+            <span class="font-semibold" style="color:#e2e8f0;">{{ val or '—' }}</span>
+          </div>
+          <div class="h-1.5 rounded-full" style="background:#1e2d4a;">
+            <div class="strength-bar-fill"
+                 style="width:{{ (((val or 0) - 1000) / 500 * 100)|round|abs if val else 0 }}%;"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Strength Radar -->
+    <div class="flex-shrink-0" style="width:240px; height:220px;">
+      <canvas id="strengthRadar"></canvas>
+    </div>
+  </div>
+
+  <!-- Upcoming Fixtures -->
+  {% if fixtures %}
+  <div class="mb-8">
+    <h2 class="text-lg font-bold mb-4">Upcoming Fixtures</h2>
+    <div class="flex gap-3 overflow-x-auto pb-2">
+      {% for fix in fixtures %}
+      <div class="flex-shrink-0 card p-3 text-center" style="min-width:100px;">
+        <p class="text-xs mb-2" style="color:#64748b;">
+          GW{{ fix.gameweek_fpl_id or '?' }}
+        </p>
+        <p class="font-bold text-sm">{{ fix.opponent_short }}</p>
+        <p class="text-xs mt-1" style="color:#64748b;">{{ '(H)' if fix.is_home else '(A)' }}</p>
+        <div class="mt-2 px-2 py-0.5 rounded text-xs font-bold fdr-{{ fix.my_difficulty or 3 }}">
+          {{ ['', 'EASY', 'EASY', 'MED', 'HARD', 'HARD'][fix.my_difficulty or 3] }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Squad by position -->
+  <div>
+    <h2 class="text-lg font-bold mb-4">Squad</h2>
+    {% set position_groups = [(1,'Goalkeepers'),(2,'Defenders'),(3,'Midfielders'),(4,'Forwards')] %}
+    {% for pos_id, pos_label in position_groups %}
+    {% set pos_players = squad | selectattr('element_type', 'equalto', pos_id) | list %}
+    {% if pos_players %}
+    <div class="mb-6">
+      <h3 class="text-sm font-semibold uppercase tracking-widest mb-3" style="color:#64748b;">
+        {{ pos_label }}
+        <span class="ml-2 text-xs font-normal" style="color:#475569;">({{ pos_players | length }})</span>
+      </h3>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+        {% for p in pos_players %}
+        <a href="/players/{{ p.fpl_id }}"
+           class="card card-clickable flex flex-col items-center p-3 text-center gap-2 no-underline">
+          <div class="relative">
+            <img src="{{ player_photo_url(p.code) }}"
+                 alt="{{ p.web_name }}"
+                 class="w-14 h-[72px] object-cover object-top rounded"
+                 onerror="this.src='/static/images/placeholder_player.png'" />
+            {% if p.status and p.status != 'a' %}
+            <span class="absolute -top-1 -right-1 status-dot
+                   {{ 'doubt' if p.status == 'd' else 'injured' if p.status == 'i' else 'suspended' }}"
+                  title="{{ p.status | status_label }}"></span>
+            {% endif %}
+          </div>
+          <p class="font-medium text-xs leading-tight">{{ p.web_name }}</p>
+          <p class="stat-num font-bold text-sm" style="color:#00ff87;">{{ p.total_points or 0 }} pts</p>
+          <p class="text-xs" style="color:#64748b;">{{ p.now_cost | format_cost }}</p>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const team = {{ team | tojson }};
+createRadarChart('strengthRadar',
+  ['Ovr H', 'Ovr A', 'Att H', 'Att A', 'Def H', 'Def A'],
+  [{
+    label: team.short_name,
+    data: [
+      team.strength_overall_home  || 0,
+      team.strength_overall_away  || 0,
+      team.strength_attack_home   || 0,
+      team.strength_attack_away   || 0,
+      team.strength_defence_home  || 0,
+      team.strength_defence_away  || 0,
+    ],
+    borderColor: '#00ff87',
+  }]
+);
+</script>
+{% endblock %}

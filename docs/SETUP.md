@@ -90,7 +90,25 @@ WHERE p.web_name = 'Salah'
 ORDER BY ph.round;
 ```
 
-## Step 6: Set Up the Cron Job (OpenClaw)
+## Step 6: Launch the Dashboard (optional)
+
+The dashboard webapp lets you explore the database in a browser — player cards, charts, team comparisons, and more.
+
+```bash
+# Install webapp dependencies (same venv, run once)
+pip install -r webapp/requirements.txt
+
+# Start the server
+python -m webapp
+```
+
+Open **http://127.0.0.1:8000**. Press `Ctrl+C` to stop.
+
+Player photos and team badges download from the FPL CDN in the background on first startup. Subsequent restarts skip files that already exist.
+
+For the full webapp documentation — all pages, the JSON API, debugging — see [../webapp/README.md](../webapp/README.md).
+
+## Step 7: Set Up the Cron Job (OpenClaw)
 
 See [OPENCLAW.md](OPENCLAW.md) for the full integration guide.
 

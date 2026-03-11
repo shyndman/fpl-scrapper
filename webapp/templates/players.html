@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="py-8" x-data="playerFilters()">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-3xl font-bold"><span class="gradient-text">Players</span></h1>
+      <p class="text-sm mt-1" style="color:#64748b;">
+        {{ total }} player{% if total != 1 %}s{% endif %} found
+      </p>
+    </div>
+    <!-- Sort -->
+    <div class="flex items-center gap-2">
+      <span class="text-xs" style="color:#64748b;">Sort by</span>
+      <form method="get" id="sort-form">
+        <input type="hidden" name="pos" value="{{ filter_pos or '' }}" />
+        <input type="hidden" name="team" value="{{ filter_team or '' }}" />
+        <input type="hidden" name="status" value="{{ filter_status or '' }}" />
+        <input type="hidden" name="min_cost" value="{{ filter_min_cost or '' }}" />
+        <input type="hidden" name="max_cost" value="{{ filter_max_cost or '' }}" />
+        <input type="hidden" name="order" value="{{ filter_order or 'desc' }}" />
+        <select name="sort" onchange="this.form.submit()"
+                class="text-sm rounded-lg px-3 py-2 border focus:outline-none"
+                style="background:#0f1729; border-color:#1e2d4a; color:#e2e8f0;">
+          {% set sort_opts = [
+            ('total_points','Total Pts'),('form','Form'),('now_cost','Price'),
+            ('points_per_game','PPG'),('goals_scored','Goals'),
+            ('assists','Assists'),('minutes','Minutes'),('bonus','Bonus'),
+            ('selected_by_percent','Ownership'),
+          ] %}
+          {% for val, label in sort_opts %}
+          <option value="{{ val }}" {% if filter_sort == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card p-4 mb-6">
+    <form method="get" class="flex flex-wrap gap-3 items-end">
+      <!-- Position -->
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Position</p>
+        <div class="flex gap-2">
+          {% for pos_val, pos_label in [(None,'All'),(1,'GK'),(2,'DEF'),(3,'MID'),(4,'FWD')] %}
+          <button type="submit" name="pos" value="{{ pos_val or '' }}"
+                  class="filter-chip {% if filter_pos == pos_val or (filter_pos is none and pos_val is none) %}active{% endif %}">
+            {{ pos_label }}
+          </button>
+          {% endfor %}
+          <input type="hidden" name="team" value="{{ filter_team or '' }}" />
+          <input type="hidden" name="status" value="{{ filter_status or '' }}" />
+          <input type="hidden" name="sort" value="{{ filter_sort or 'total_points' }}" />
+          <input type="hidden" name="order" value="{{ filter_order or 'desc' }}" />
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Status</p>
+        <div class="flex gap-2">
+          {% for stat_val, stat_label in [(None,'All'),('available','Available'),('doubt','Doubt'),('injured','Injured')] %}
+          <button type="submit" name="status" value="{{ stat_val or '' }}"
+                  class="filter-chip {% if filter_status == stat_val or (filter_status is none and stat_val is none) %}active{% endif %}">
+            {{ stat_label }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Team -->
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Team</p>
+        <select name="team" onchange="this.form.submit()"
+                class="text-sm rounded-lg px-3 py-2 border focus:outline-none"
+                style="background:#0a0e1a; border-color:#1e2d4a; color:#e2e8f0;">
+          <option value="">All teams</option>
+          {% for t in teams %}
+          <option value="{{ t.fpl_id }}" {% if filter_team == t.fpl_id %}selected{% endif %}>
+            {{ t.short_name }} — {{ t.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Price range -->
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Price (£m)</p>
+        <div class="flex gap-2 items-center">
+          <input type="number" name="min_cost" placeholder="Min" step="5" min="40" max="160"
+                 value="{{ filter_min_cost or '' }}"
+                 class="w-20 text-sm rounded-lg px-2 py-2 border text-center focus:outline-none"
+                 style="background:#0a0e1a; border-color:#1e2d4a; color:#e2e8f0;" />
+          <span style="color:#64748b;">–</span>
+          <input type="number" name="max_cost" placeholder="Max" step="5" min="40" max="160"
+                 value="{{ filter_max_cost or '' }}"
+                 class="w-20 text-sm rounded-lg px-2 py-2 border text-center focus:outline-none"
+                 style="background:#0a0e1a; border-color:#1e2d4a; color:#e2e8f0;" />
+          <button type="submit" class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                  style="background:rgba(0,255,135,0.1); color:#00ff87; border:1px solid rgba(0,255,135,0.3);">
+            Apply
+          </button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Player Grid -->
+  {% if players %}
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
+    {% for p in players %}
+    <a href="/players/{{ p.fpl_id }}"
+       class="card card-clickable flex flex-col no-underline overflow-hidden">
+      <!-- Image area -->
+      <div class="relative flex justify-center pt-4 pb-2" style="background:#162040;">
+        <img src="{{ player_photo_url(p.code) }}"
+             alt="{{ p.web_name }}"
+             class="player-img"
+             onerror="this.src='/static/images/placeholder_player.png'" />
+        <!-- Position pill -->
+        <span class="absolute top-2 left-2 pos-pill {{ p.element_type | position_color }}">
+          {{ p.element_type | position_name }}
+        </span>
+        <!-- Status dot -->
+        {% if p.status and p.status != 'a' %}
+        <span class="absolute top-2 right-2 status-dot {{ 'doubt' if p.status == 'd' else 'injured' if p.status == 'i' else 'suspended' }}"
+              title="{{ p.status | status_label }}"></span>
+        {% endif %}
+      </div>
+
+      <!-- Info -->
+      <div class="p-3 flex flex-col gap-1 flex-1">
+        <p class="font-semibold text-sm leading-tight">{{ p.web_name }}</p>
+        <div class="flex items-center gap-1.5">
+          <img src="{{ team_badge_url(p.team_fpl_id) }}"
+               alt="" class="w-4 h-4 object-contain"
+               onerror="this.src='/static/images/placeholder_badge.png'" />
+          <span class="text-xs" style="color:#64748b;">{{ p.team_short_name }}</span>
+        </div>
+
+        <div class="mt-auto pt-2 flex items-end justify-between">
+          <div>
+            <p class="text-xs" style="color:#64748b;">Price</p>
+            <p class="font-bold text-sm stat-num">{{ p.now_cost | format_cost }}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs" style="color:#64748b;">Total</p>
+            <p class="font-bold stat-num" style="color:#00ff87;">{{ p.total_points or 0 }} pts</p>
+          </div>
+        </div>
+
+        <!-- Form + Ownership -->
+        <div class="flex justify-between text-xs" style="color:#64748b;">
+          <span>Form: <strong style="color:#e2e8f0;">{{ p.form or '0.0' }}</strong></span>
+          <span>{{ p.selected_by_percent or '0.0' }}% own</span>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card p-12 text-center" style="color:#64748b;">
+    <p class="text-lg mb-2">No players match your filters</p>
+    <a href="/players" class="text-sm" style="color:#38bdf8;">Clear filters</a>
+  </div>
+  {% endif %}
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div class="flex items-center justify-center gap-2">
+    {% if page > 1 %}
+    <a href="?{{ request.query_params | replace('page=' ~ page, 'page=' ~ (page-1)) if 'page=' in request.query_params.__str__() else request.query_params.__str__() ~ '&page=' ~ (page-1) }}"
+       class="page-btn">←</a>
+    {% else %}
+    <span class="page-btn disabled">←</span>
+    {% endif %}
+
+    {% for p_num in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+    <a href="?{{ request.query_params | replace('page=' ~ page, 'page=' ~ p_num) if 'page=' in request.query_params.__str__() else request.query_params.__str__() ~ '&page=' ~ p_num }}"
+       class="page-btn {% if p_num == page %}active{% endif %}">
+      {{ p_num }}
+    </a>
+    {% endfor %}
+
+    {% if page < total_pages %}
+    <a href="?{{ request.query_params | replace('page=' ~ page, 'page=' ~ (page+1)) if 'page=' in request.query_params.__str__() else request.query_params.__str__() ~ '&page=' ~ (page+1) }}"
+       class="page-btn">→</a>
+    {% else %}
+    <span class="page-btn disabled">→</span>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function playerFilters() {
+  return {};
+}
+</script>
+{% endblock %}

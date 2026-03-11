@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="py-8" x-data="compareApp()" x-init="init()">
+
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold mb-1"><span class="gradient-text">Compare</span></h1>
+    <p class="text-sm" style="color:#64748b;">Compare players or teams across any stats</p>
+  </div>
+
+  <!-- Control bar -->
+  <div class="card p-5 mb-6">
+    <div class="flex flex-wrap gap-4 items-start">
+
+      <!-- Type toggle -->
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Type</p>
+        <div class="flex gap-2">
+          <button @click="setType('player')"
+                  :class="type === 'player' ? 'active' : ''"
+                  class="filter-chip">Players</button>
+          <button @click="setType('team')"
+                  :class="type === 'team' ? 'active' : ''"
+                  class="filter-chip">Teams</button>
+        </div>
+      </div>
+
+      <!-- Typeahead search -->
+      <div class="flex-1 min-w-48">
+        <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">
+          Add <span x-text="type"></span> <span style="color:#475569;">(up to 5)</span>
+        </p>
+        <div class="relative">
+          <input
+            type="text"
+            x-model="searchQuery"
+            @input.debounce.300ms="runSearch()"
+            @keydown.escape="searchResults = []"
+            @focus="if(searchQuery.length > 1) runSearch()"
+            placeholder="Search by name..."
+            class="w-full text-sm rounded-lg px-4 py-2.5 border focus:outline-none focus:ring-1"
+            style="background:#0a0e1a; border-color:#1e2d4a; color:#e2e8f0;"
+          />
+          <!-- Dropdown -->
+          <div x-show="searchResults.length > 0" x-transition class="typeahead-dropdown" @click.outside="searchResults = []">
+            <template x-for="result in searchResults" :key="result.id + '-' + result.type">
+              <div class="typeahead-item" @click="addEntity(result)">
+                <img :src="result.photo_url || result.badge_url || '/static/images/placeholder_player.png'"
+                     class="w-8 h-8 object-contain rounded"
+                     onerror="this.src='/static/images/placeholder_player.png'" />
+                <div>
+                  <p class="text-sm font-medium" x-text="result.label"></p>
+                  <p class="text-xs" style="color:#64748b;" x-text="result.sub"></p>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart type toggle -->
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Chart</p>
+        <div class="flex gap-2">
+          <button @click="chartMode = 'line'; renderChartsDeferred()"
+                  :class="chartMode === 'line' ? 'active' : ''"
+                  class="filter-chip">Line</button>
+          <button @click="chartMode = 'bar'; renderChartsDeferred()"
+                  :class="chartMode === 'bar' ? 'active' : ''"
+                  class="filter-chip">Bar</button>
+          <button @click="chartMode = 'radar'; renderChartsDeferred()"
+                  :class="chartMode === 'radar' ? 'active' : ''"
+                  class="filter-chip">Radar</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Selected entities -->
+    <template x-if="selectedEntities.length > 0">
+      <div class="flex flex-wrap gap-2 mt-4">
+        <template x-for="(ent, idx) in selectedEntities" :key="'sel-' + ent.id">
+          <span class="entity-tag">
+            <img :src="ent.photo_url || ent.badge_url || '/static/images/placeholder_player.png'"
+                 class="w-6 h-6 object-contain rounded"
+                 onerror="this.src='/static/images/placeholder_player.png'" />
+            <span x-text="ent.label"></span>
+            <button @click="removeEntity(idx)" title="Remove">✕</button>
+          </span>
+        </template>
+      </div>
+    </template>
+
+    <!-- Metric selector -->
+    <template x-if="selectedEntities.length > 0">
+      <div class="mt-4">
+        <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Metrics</p>
+        <div class="flex flex-wrap gap-2">
+          <template x-for="m in availableMetrics" :key="'metric-' + m.key">
+            <button
+              @click="toggleMetric(m.key)"
+              :class="selectedMetrics.includes(m.key) ? 'active' : ''"
+              class="metric-pill"
+              x-text="m.label"
+            ></button>
+          </template>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Loading indicator -->
+  <div x-show="loading" class="flex justify-center py-12">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Empty state -->
+  <div x-show="!loading && selectedEntities.length === 0" class="card p-16 text-center">
+    <svg class="w-14 h-14 mx-auto mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+    <p class="text-lg font-medium mb-1" style="color:#64748b;">Start comparing</p>
+    <p class="text-sm" style="color:#475569;">Search for players or teams above, then pick metrics to compare.</p>
+  </div>
+
+  <!-- Charts + table — only rendered once we have data -->
+  <template x-if="!loading && compareData && selectedEntities.length > 0">
+    <div>
+      <!-- Metric charts (one per selected metric) -->
+      <div class="space-y-6 mb-8">
+        <template x-for="metric in selectedMetrics" :key="'chart-section-' + metric">
+          <div class="card p-5">
+            <h3 class="text-sm font-semibold uppercase tracking-wide mb-4" style="color:#94a3b8;"
+                x-text="metricLabel(metric)"></h3>
+            <div class="chart-wrap" style="height:260px;">
+              <canvas :id="'chart-' + metric"></canvas>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Summary comparison table -->
+      <template x-if="compareData.table && compareData.table.length > 0">
+        <div class="card overflow-hidden">
+          <div class="px-5 py-4" style="border-bottom:1px solid #1e2d4a;">
+            <h3 class="font-semibold">Season Summary</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <template x-for="ent in compareData.entities" :key="'th-' + ent.fpl_id">
+                    <th class="text-right" x-text="ent.web_name || ent.short_name || ent.name"></th>
+                  </template>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="row in compareData.table" :key="'row-' + row.metric">
+                  <tr>
+                    <td class="font-medium text-sm" x-text="metricLabel(row.metric)"></td>
+                    <template x-for="ent in compareData.entities" :key="'cell-' + ent.fpl_id + '-' + row.metric">
+                      <td class="text-right stat-num font-semibold" style="color:#00ff87;"
+                          x-text="row[String(ent.fpl_id)] !== undefined ? row[String(ent.fpl_id)] : '—'"></td>
+                    </template>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
+    </div>
+  </template>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Pre-populate from URL params
+const urlParams    = new URLSearchParams(window.location.search);
+const preloadIds   = urlParams.get('ids')  ? urlParams.get('ids').split(',').map(Number).filter(Boolean) : [];
+const preloadType  = urlParams.get('type') || 'player';
+
+function compareApp() {
+  return {
+    type: preloadType,
+    searchQuery: '',
+    searchResults: [],
+    selectedEntities: [],
+    selectedMetrics: ['total_points', 'goals_scored', 'assists'],
+    chartMode: 'line',
+    loading: false,
+    compareData: null,
+    charts: {},
+
+    availableMetrics: [
+      { key: 'total_points',              label: 'Total Points' },
+      { key: 'goals_scored',              label: 'Goals' },
+      { key: 'assists',                   label: 'Assists' },
+      { key: 'clean_sheets',              label: 'Clean Sheets' },
+      { key: 'minutes',                   label: 'Minutes' },
+      { key: 'form',                      label: 'Form' },
+      { key: 'now_cost',                  label: 'Price' },
+      { key: 'points_per_game',           label: 'PPG' },
+      { key: 'selected_by_percent',       label: 'Ownership %' },
+      { key: 'bonus',                     label: 'Bonus' },
+      { key: 'bps',                       label: 'BPS' },
+      { key: 'influence',                 label: 'Influence' },
+      { key: 'creativity',                label: 'Creativity' },
+      { key: 'threat',                    label: 'Threat' },
+      { key: 'ict_index',                 label: 'ICT Index' },
+      { key: 'expected_goals',            label: 'xG' },
+      { key: 'expected_assists',          label: 'xA' },
+      { key: 'goals_conceded',            label: 'Goals Conceded' },
+      { key: 'yellow_cards',              label: 'Yellow Cards' },
+      { key: 'saves',                     label: 'Saves' },
+    ],
+
+    async init() {
+      if (preloadIds.length > 0) {
+        for (const id of preloadIds) {
+          try {
+            const endpoint = preloadType === 'team'
+              ? `/api/teams/${id}`
+              : `/api/players/${id}`;
+            const resp = await fetch(endpoint);
+            if (!resp.ok) continue;
+            const data = await resp.json();
+            if (preloadType === 'team') {
+              this.selectedEntities.push({
+                id: data.fpl_id, label: data.name,
+                sub: data.short_name, badge_url: data.badge_url, type: 'team',
+              });
+            } else {
+              this.selectedEntities.push({
+                id: data.fpl_id, label: data.web_name,
+                sub: data.team_short_name, photo_url: data.photo_url, type: 'player',
+              });
+            }
+          } catch (e) { /* ignore */ }
+        }
+        if (this.selectedEntities.length > 0) {
+          await this.loadCompareData();
+        }
+      }
+    },
+
+    setType(t) {
+      this.type = t;
+      this.selectedEntities = [];
+      this.compareData = null;
+      this.searchQuery = '';
+      this.searchResults = [];
+      this.destroyCharts();
+    },
+
+    async runSearch() {
+      const q = this.searchQuery.trim();
+      if (q.length < 1) { this.searchResults = []; return; }
+      const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=${this.type}`);
+      this.searchResults = await resp.json();
+    },
+
+    addEntity(result) {
+      if (this.selectedEntities.length >= 5) return;
+      if (this.selectedEntities.find(e => e.id === result.id)) return;
+      this.selectedEntities.push(result);
+      this.searchQuery = '';
+      this.searchResults = [];
+      this.loadCompareData();
+    },
+
+    removeEntity(idx) {
+      this.selectedEntities.splice(idx, 1);
+      this.destroyCharts();
+      if (this.selectedEntities.length === 0) {
+        this.compareData = null;
+      } else {
+        this.loadCompareData();
+      }
+    },
+
+    toggleMetric(key) {
+      const idx = this.selectedMetrics.indexOf(key);
+      if (idx >= 0) {
+        if (this.selectedMetrics.length <= 1) return;
+        this.selectedMetrics.splice(idx, 1);
+        // Destroy chart for removed metric
+        if (this.charts[key]) { this.charts[key].destroy(); delete this.charts[key]; }
+      } else {
+        this.selectedMetrics.push(key);
+      }
+      // Re-fetch data to get new metric datasets, then re-render
+      this.loadCompareData();
+    },
+
+    metricLabel(key) {
+      const m = this.availableMetrics.find(x => x.key === key);
+      return m ? m.label : key;
+    },
+
+    async loadCompareData() {
+      if (this.selectedEntities.length === 0) return;
+      this.loading = true;
+      this.destroyCharts();
+      try {
+        const ids     = this.selectedEntities.map(e => e.id).join(',');
+        const metrics = this.selectedMetrics.join(',');
+        const resp    = await fetch(`/api/compare?ids=${ids}&type=${this.type}&metrics=${metrics}`);
+        this.compareData = await resp.json();
+        // Wait for Alpine + DOM to fully render the canvas elements
+        await this.$nextTick();
+        // Extra tick to ensure x-for has finished rendering
+        await new Promise(resolve => setTimeout(resolve, 50));
+        this.renderCharts();
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    renderChartsDeferred() {
+      setTimeout(() => this.renderCharts(), 50);
+    },
+
+    renderCharts() {
+      if (!this.compareData) return;
+      this.destroyCharts();
+
+      const gws       = this.compareData.gameweeks || [];
+      const gwLabels  = gws.map(g => 'GW' + g);
+      const dsMap     = this.compareData.datasets  || {};
+      const entities  = this.compareData.entities  || [];
+
+      for (const metric of this.selectedMetrics) {
+        const canvasId = 'chart-' + metric;
+        const canvas   = document.getElementById(canvasId);
+        if (!canvas) continue;
+
+        if (this.chartMode === 'bar') {
+          const labels = entities.map(e => e.web_name || e.short_name || e.name || '?');
+          const vals   = entities.map(e => {
+            const row = (this.compareData.table || []).find(r => r.metric === metric);
+            return row ? (parseFloat(row[String(e.fpl_id)]) || 0) : 0;
+          });
+          this.charts[metric] = createBarChart(canvasId, labels, [
+            { label: this.metricLabel(metric), data: vals, borderColor: '#00ff87' },
+          ]);
+
+        } else if (this.chartMode === 'radar') {
+          // Render one radar for all metrics, skip subsequent
+          if (metric !== this.selectedMetrics[0]) continue;
+          const radarLabels   = this.selectedMetrics.map(m => this.metricLabel(m));
+          const COLORS        = ['#00ff87', '#38bdf8', '#f97316', '#a78bfa', '#fb7185'];
+          const radarDatasets = entities.map((e, i) => ({
+            label: e.web_name || e.short_name || e.name || '?',
+            data: this.selectedMetrics.map(m => {
+              const row = (this.compareData.table || []).find(r => r.metric === m);
+              return row ? parseFloat(row[String(e.fpl_id)] || 0) : 0;
+            }),
+            borderColor: COLORS[i % COLORS.length],
+          }));
+          this.charts[metric] = createRadarChart('chart-' + this.selectedMetrics[0], radarLabels, radarDatasets);
+
+        } else {
+          // Line (default)
+          const ds = dsMap[metric] || [];
+          this.charts[metric] = createLineChart(canvasId, gwLabels, ds);
+        }
+      }
+    },
+
+    destroyCharts() {
+      for (const chart of Object.values(this.charts)) {
+        if (chart && typeof chart.destroy === 'function') chart.destroy();
+      }
+      this.charts = {};
+    },
+  };
+}
+</script>
+{% endblock %}

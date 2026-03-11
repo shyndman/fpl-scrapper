@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="py-8">
+
+  <!-- Back link -->
+  <a href="/players" class="inline-flex items-center gap-1.5 text-sm mb-6 hover:underline" style="color:#64748b;">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+    </svg>
+    All Players
+  </a>
+
+  <!-- Hero -->
+  <div class="card p-6 mb-6 flex flex-col sm:flex-row gap-6">
+    <!-- Photo -->
+    <div class="flex-shrink-0 flex flex-col items-center gap-3">
+      <img src="{{ player_photo_url(player.code) }}"
+           alt="{{ player.web_name }}"
+           class="hero-player-img"
+           onerror="this.src='/static/images/placeholder_player.png'" />
+      <a href="/compare?ids={{ player.fpl_id }}&type=player"
+         class="text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
+         style="background:rgba(0,255,135,0.1); color:#00ff87; border:1px solid rgba(0,255,135,0.3);">
+        + Compare
+      </a>
+    </div>
+
+    <!-- Info -->
+    <div class="flex-1 min-w-0">
+      <div class="flex flex-wrap items-center gap-3 mb-2">
+        <span class="pos-pill {{ player.element_type | position_color }} text-sm">
+          {{ player.element_type | position_name }}
+        </span>
+        <span class="inline-flex items-center gap-1.5 text-sm {{ player.status | status_class }}">
+          <span class="status-dot {{ 'available' if player.status == 'a' else 'doubt' if player.status == 'd' else 'injured' if player.status == 'i' else 'suspended' }}"></span>
+          {{ player.status | status_label }}
+        </span>
+      </div>
+
+      <h1 class="text-3xl font-bold mb-1">{{ player.first_name }} <span style="color:#00ff87;">{{ player.second_name }}</span></h1>
+      <p class="text-lg mb-1" style="color:#94a3b8;">{{ player.web_name }}</p>
+
+      <div class="flex items-center gap-3 mb-4">
+        {% if team %}
+        <img src="{{ team_badge_url(team.fpl_id) }}"
+             alt="{{ team.name }}"
+             class="badge-img"
+             onerror="this.src='/static/images/placeholder_badge.png'" />
+        <a href="/teams/{{ team.fpl_id }}" class="font-medium hover:underline" style="color:#38bdf8;">
+          {{ team.name }}
+        </a>
+        {% endif %}
+      </div>
+
+      {% if player.news %}
+      <div class="mb-4 px-3 py-2 rounded-lg text-sm" style="background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.3); color:#fbbf24;">
+        ⚠ {{ player.news }}
+      </div>
+      {% endif %}
+
+      <!-- Quick stats row -->
+      <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+        {% set quick_stats = [
+          ('Total Pts', player.total_points, '#00ff87'),
+          ('Price', player.now_cost | format_cost, '#e2e8f0'),
+          ('Form', player.form or '0.0', '#38bdf8'),
+          ('PPG', player.points_per_game or '0.0', '#e2e8f0'),
+          ('Owned', (player.selected_by_percent or '0.0') ~ '%', '#e2e8f0'),
+          ('Starts', player.starts or 0, '#e2e8f0'),
+        ] %}
+        {% for label, val, color in quick_stats %}
+        <div class="text-center p-3 rounded-lg" style="background:#162040;">
+          <p class="text-xs mb-1" style="color:#64748b;">{{ label }}</p>
+          <p class="font-bold stat-num text-lg" style="color:{{ color }};">{{ val }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
+    {% set season_stats = [
+      ('Goals', player.goals_scored or 0),
+      ('Assists', player.assists or 0),
+      ('CS', player.clean_sheets or 0),
+      ('Minutes', player.minutes or 0),
+      ('Bonus', player.bonus or 0),
+      ('Yellow', player.yellow_cards or 0),
+      ('Red', player.red_cards or 0),
+      ('Saves', player.saves or 0),
+    ] %}
+    {% for label, val in season_stats %}
+    <div class="card p-3 text-center">
+      <p class="text-xs mb-1" style="color:#64748b;">{{ label }}</p>
+      <p class="font-bold text-xl stat-num">{{ val }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Charts row -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+
+    <!-- GW Points line chart -->
+    <div class="lg:col-span-2 card p-5">
+      <h3 class="font-semibold mb-4 text-sm uppercase tracking-wide" style="color:#94a3b8;">Points per Gameweek</h3>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="gwPointsChart"></canvas>
+      </div>
+    </div>
+
+    <!-- ICT Radar -->
+    <div class="card p-5">
+      <h3 class="font-semibold mb-4 text-sm uppercase tracking-wide" style="color:#94a3b8;">ICT Index</h3>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="ictChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Price history chart -->
+  {% if history %}
+  <div class="card p-5 mb-8">
+    <h3 class="font-semibold mb-4 text-sm uppercase tracking-wide" style="color:#94a3b8;">Price History (£m)</h3>
+    <div class="chart-wrap" style="height:180px;">
+      <canvas id="priceChart"></canvas>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Per-GW history table -->
+  {% if history %}
+  <div class="card overflow-hidden mb-8">
+    <div class="px-5 py-4" style="border-bottom:1px solid #1e2d4a;">
+      <h3 class="font-semibold">Gameweek History</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>GW</th>
+            <th>Opponent</th>
+            <th>H/A</th>
+            <th class="text-right">Pts</th>
+            <th class="text-right">Min</th>
+            <th class="text-right">G</th>
+            <th class="text-right">A</th>
+            <th class="text-right">CS</th>
+            <th class="text-right">Bonus</th>
+            <th class="text-right">BPS</th>
+            <th class="text-right">xG</th>
+            <th class="text-right">xA</th>
+            <th class="text-right">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in history %}
+          <tr>
+            <td class="font-medium">GW{{ row.gameweek_fpl_id }}</td>
+            <td>
+              <span class="text-sm" style="color:#94a3b8;">{{ row.opponent_short_name or 'N/A' }}</span>
+            </td>
+            <td class="text-xs" style="color:#64748b;">
+              {{ 'H' if row.was_home else 'A' }}
+            </td>
+            <td class="text-right font-bold stat-num" style="color:{% if row.total_points >= 10 %}#00ff87{% elif row.total_points >= 6 %}#38bdf8{% elif row.total_points <= 1 %}#f87171{% else %}#e2e8f0{% endif %};">
+              {{ row.total_points }}
+            </td>
+            <td class="text-right stat-num">{{ row.minutes or 0 }}</td>
+            <td class="text-right stat-num">{{ row.goals_scored or 0 }}</td>
+            <td class="text-right stat-num">{{ row.assists or 0 }}</td>
+            <td class="text-right stat-num">{{ row.clean_sheets or 0 }}</td>
+            <td class="text-right stat-num">{{ row.bonus or 0 }}</td>
+            <td class="text-right stat-num" style="color:#64748b;">{{ row.bps or 0 }}</td>
+            <td class="text-right stat-num text-xs" style="color:#64748b;">{{ row.expected_goals or '—' }}</td>
+            <td class="text-right stat-num text-xs" style="color:#64748b;">{{ row.expected_assists or '—' }}</td>
+            <td class="text-right stat-num text-xs" style="color:#64748b;">
+              {{ '£%.1fm' | format(row.value / 10) if row.value else '—' }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Past seasons -->
+  {% if history_past %}
+  <div class="card overflow-hidden">
+    <div class="px-5 py-4" style="border-bottom:1px solid #1e2d4a;">
+      <h3 class="font-semibold">Past Seasons</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Season</th>
+            <th class="text-right">Pts</th>
+            <th class="text-right">G</th>
+            <th class="text-right">A</th>
+            <th class="text-right">Min</th>
+            <th class="text-right">CS</th>
+            <th class="text-right">Bonus</th>
+            <th class="text-right">Start £</th>
+            <th class="text-right">End £</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in history_past %}
+          <tr>
+            <td class="font-medium">{{ s.season_name }}</td>
+            <td class="text-right font-bold stat-num" style="color:#00ff87;">{{ s.total_points }}</td>
+            <td class="text-right stat-num">{{ s.goals_scored or 0 }}</td>
+            <td class="text-right stat-num">{{ s.assists or 0 }}</td>
+            <td class="text-right stat-num">{{ s.minutes or 0 }}</td>
+            <td class="text-right stat-num">{{ s.clean_sheets or 0 }}</td>
+            <td class="text-right stat-num">{{ s.bonus or 0 }}</td>
+            <td class="text-right stat-num text-xs" style="color:#64748b;">
+              {{ s.start_cost | format_cost if s.start_cost else '—' }}
+            </td>
+            <td class="text-right stat-num text-xs" style="color:#64748b;">
+              {{ s.end_cost | format_cost if s.end_cost else '—' }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const history = {{ history | tojson }};
+
+// GW Points chart
+if (history.length > 0) {
+  const gwLabels = history.map(r => 'GW' + r.gameweek_fpl_id);
+  const points = history.map(r => r.total_points || 0);
+  const goals  = history.map(r => r.goals_scored || 0);
+
+  createLineChart('gwPointsChart', gwLabels, [
+    { label: 'Points', data: points, borderColor: '#00ff87' },
+    { label: 'Goals',  data: goals,  borderColor: '#f97316' },
+    { label: 'Assists', data: history.map(r => r.assists || 0), borderColor: '#38bdf8' },
+  ]);
+
+  // Price chart
+  const prices = history.map(r => r.value ? +(r.value / 10).toFixed(1) : null);
+  createLineChart('priceChart', gwLabels, [
+    { label: 'Price (£m)', data: prices, borderColor: '#a78bfa' },
+  ]);
+}
+
+// ICT Radar
+const player = {{ player | tojson }};
+createRadarChart('ictChart',
+  ['Influence', 'Creativity', 'Threat', 'ICT Index'],
+  [{
+    label: player.web_name,
+    data: [
+      parseFloat(player.influence) || 0,
+      parseFloat(player.creativity) || 0,
+      parseFloat(player.threat) || 0,
+      parseFloat(player.ict_index) || 0,
+    ],
+    borderColor: '#00ff87',
+  }]
+);
+</script>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="py-8">
+
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold mb-1"><span class="gradient-text">Teams</span></h1>
+    <p class="text-sm" style="color:#64748b;">{{ teams | length }} Premier League clubs</p>
+  </div>
+
+  <!-- Teams grid -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+    {% for team in teams %}
+    <a href="/teams/{{ team.fpl_id }}"
+       class="card card-clickable p-5 flex flex-col items-center gap-3 text-center no-underline">
+
+      <!-- Badge -->
+      <img src="{{ team_badge_url(team.fpl_id) }}"
+           alt="{{ team.name }}"
+           class="badge-img-xl"
+           onerror="this.src='/static/images/placeholder_badge.png'" />
+
+      <!-- Name -->
+      <div>
+        <p class="font-bold text-base">{{ team.short_name }}</p>
+        <p class="text-xs mt-0.5" style="color:#64748b;">{{ team.name }}</p>
+      </div>
+
+      <!-- Win/Draw/Loss -->
+      <div class="flex gap-2 text-xs">
+        <span class="px-2 py-0.5 rounded font-semibold" style="background:rgba(52,211,153,0.12); color:#34d399;">
+          W {{ team.wins or 0 }}
+        </span>
+        <span class="px-2 py-0.5 rounded font-semibold" style="background:rgba(100,116,139,0.12); color:#94a3b8;">
+          D {{ team.draws or 0 }}
+        </span>
+        <span class="px-2 py-0.5 rounded font-semibold" style="background:rgba(248,113,113,0.12); color:#f87171;">
+          L {{ team.losses or 0 }}
+        </span>
+      </div>
+
+      <!-- Strength bar -->
+      <div class="w-full">
+        <div class="flex justify-between text-xs mb-1" style="color:#64748b;">
+          <span>Overall Strength</span>
+          <span class="font-semibold" style="color:#e2e8f0;">{{ team.strength or '?' }}/5</span>
+        </div>
+        <div class="h-1 rounded-full" style="background:#1e2d4a;">
+          <div class="strength-bar-fill"
+               style="width:{{ ((team.strength or 0) / 5 * 100)|round }}%;"></div>
+        </div>
+      </div>
+
+      <!-- Strength detail -->
+      <div class="w-full grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+        {% set strength_items = [
+          ('Att H', team.strength_attack_home),
+          ('Att A', team.strength_attack_away),
+          ('Def H', team.strength_defence_home),
+          ('Def A', team.strength_defence_away),
+        ] %}
+        {% for label, val in strength_items %}
+        <div class="flex justify-between">
+          <span style="color:#64748b;">{{ label }}</span>
+          <span class="font-medium">{{ val or '—' }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+    </a>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

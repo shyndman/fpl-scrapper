@@ -13,12 +13,13 @@ A tool that automatically collects player statistics from the Fantasy Premier Le
 5. [Installation](#5-installation)
 6. [Configuration](#6-configuration)
 7. [Running the scraper](#7-running-the-scraper)
-8. [Running the tests](#8-running-the-tests)
-9. [Verifying your data](#9-verifying-your-data)
-10. [Setting up the cron job (OpenClaw)](#10-setting-up-the-cron-job-openclaw)
-11. [Querying the database](#11-querying-the-database)
-12. [Troubleshooting](#12-troubleshooting)
-13. [Keeping the scraper working when FPL changes](#13-keeping-the-scraper-working-when-fpl-changes)
+8. [Running the dashboard webapp](#8-running-the-dashboard-webapp)
+9. [Running the tests](#9-running-the-tests)
+10. [Verifying your data](#10-verifying-your-data)
+11. [Setting up the cron job (OpenClaw)](#11-setting-up-the-cron-job-openclaw)
+12. [Querying the database](#12-querying-the-database)
+13. [Troubleshooting](#13-troubleshooting)
+14. [Keeping the scraper working when FPL changes](#14-keeping-the-scraper-working-when-fpl-changes)
 
 ---
 
@@ -26,15 +27,21 @@ A tool that automatically collects player statistics from the Fantasy Premier Le
 
 The FPL website at `https://fantasy.premierleague.com/statistics` shows detailed statistics for every player in the Premier League — goals, assists, points, price, ownership, form, expected goals, and much more. This data is served by an undocumented internal API.
 
-This tool:
+This project has two components:
 
+**The scraper** (`src/`):
 - **Discovers and calls** that internal API on your behalf
 - **Downloads** statistics for all ~700 FPL players
 - **Stores** everything in a local SQLite database file (`data/fpl.db`)
 - **Runs safely** without getting your account banned — it waits 2–3 seconds between every request and backs off gracefully if the server complains
 - **Updates incrementally** — after each gameweek you only need to re-fetch the new data, not everything from scratch
 
-The database is then read by OpenClaw (or any other tool) to power queries, dashboards, or analysis.
+**The dashboard** (`webapp/`):
+- A local web application that reads `data/fpl.db` and presents it as interactive pages
+- Browse and filter all players and teams, view charts, and compare any players or teams side-by-side
+- Launch with `python -m webapp` and open http://127.0.0.1:8000
+
+The database is also read directly by OpenClaw (or any other tool) for queries and analysis.
 
 ---
 
@@ -85,6 +92,17 @@ fpl-web-scrapper/
 │   ├── database.py            ← Creates the database schema and handles all writes
 │   ├── sync.py                ← Orchestrates the full-sync and gameweek-sync workflows
 │   └── logger.py              ← Sets up logging to the terminal and to a log file
+│
+├── webapp/                    ← Local web dashboard (separate README inside)
+│   ├── README.md              ← Full webapp documentation — read this first
+│   ├── requirements.txt       ← Webapp Python dependencies
+│   ├── __main__.py            ← Entry point: python -m webapp
+│   ├── app.py                 ← FastAPI app factory, Jinja2 filters, lifespan
+│   ├── db.py                  ← Read-only database queries, TTL cache
+│   ├── images.py              ← Downloads player photos and team badges at startup
+│   ├── routers/               ← HTML page routes and JSON API routes
+│   ├── templates/             ← Jinja2 HTML templates (6 pages + base layout)
+│   └── static/                ← CSS, JS helpers, downloaded player/team images
 │
 ├── docs/                      ← Additional reference documentation
 │   ├── API.md                 ← Detailed FPL API endpoint documentation
@@ -282,7 +300,7 @@ Probe all known FPL API endpoints and print their response structure as JSON:
 python -m src.main --discover-api
 ```
 
-Use this when you suspect the API has changed (see [section 13](#13-keeping-the-scraper-working-when-fpl-changes)).
+Use this when you suspect the API has changed (see [section 14](#14-keeping-the-scraper-working-when-fpl-changes)).
 
 ### Verbose logging
 
@@ -304,7 +322,48 @@ The scraper exits with a code that tells OpenClaw (or any calling process) what 
 
 ---
 
-## 8. Running the tests
+## 8. Running the dashboard webapp
+
+The webapp reads `data/fpl.db` and presents it as an interactive browser-based dashboard. The scraper must have been run at least once before the webapp has any data to show.
+
+### Install webapp dependencies
+
+```bash
+pip install -r webapp/requirements.txt
+```
+
+This only needs to be done once (or after a fresh `venv`).
+
+### Start the server
+
+From the project root:
+
+```bash
+python -m webapp
+```
+
+Then open **http://127.0.0.1:8000** in your browser. Press `Ctrl+C` to stop the server.
+
+### What you get
+
+| Page | URL | Description |
+|---|---|---|
+| Dashboard | `/` | Current GW summary, top performers, all teams |
+| Players | `/players` | Filter and browse all ~700 players; sort by any stat |
+| Player detail | `/players/{id}` | Charts, stats, GW history, past seasons |
+| Teams | `/teams` | All 20 clubs with badges and records |
+| Team detail | `/teams/{id}` | Squad, fixture difficulty strip, strength radar |
+| Compare | `/compare` | Side-by-side charts for up to 5 players or teams |
+
+**Images:** Player photos and team badges are downloaded from the FPL CDN in the background the first time the server starts. Subsequent restarts skip files that already exist.
+
+**Data freshness:** The webapp caches query results for up to 5 minutes. If you have just run the scraper and want to see fresh data immediately, restart the webapp.
+
+For the full webapp documentation — folder structure, all pages explained, the JSON API, debugging — see **[webapp/README.md](webapp/README.md)**.
+
+---
+
+## 9. Running the tests
 
 The test suite covers the rate limiter, HTTP retry logic, JSON parsing, database operations, and sync workflows. It runs entirely offline using sample JSON responses stored in `tests/fixtures/` — no network connection or FPL account needed.
 
@@ -358,7 +417,7 @@ python -m pytest tests/ --cov=src --cov-report=term-missing
 
 ---
 
-## 9. Verifying your data
+## 10. Verifying your data
 
 After a successful full sync, open the database to check the data looks right:
 
@@ -403,7 +462,7 @@ Type `.quit` to exit the SQLite shell.
 
 ---
 
-## 10. Setting up the cron job (OpenClaw)
+## 11. Setting up the cron job (OpenClaw)
 
 OpenClaw calls this scraper automatically after each gameweek. Here is how to set that up.
 
@@ -459,7 +518,7 @@ For the full OpenClaw integration reference, see [docs/OPENCLAW.md](docs/OPENCLA
 
 ---
 
-## 11. Querying the database
+## 12. Querying the database
 
 The database at `data/fpl.db` is a standard SQLite file. It can be read by any SQLite client, Python's built-in `sqlite3` module, or tools like [DB Browser for SQLite](https://sqlitebrowser.org).
 
@@ -542,7 +601,7 @@ For the complete schema with all column descriptions, see [docs/SCHEMA.md](docs/
 
 ---
 
-## 12. Troubleshooting
+## 13. Troubleshooting
 
 ### "No such file or directory: data/fpl.db"
 
@@ -613,7 +672,7 @@ SELECT * FROM scrape_log ORDER BY started_at DESC LIMIT 10;
 
 ---
 
-## 13. Keeping the scraper working when FPL changes
+## 14. Keeping the scraper working when FPL changes
 
 FPL occasionally updates its website and the underlying API — adding new fields, changing field names, or altering endpoint behaviour. Here is how to diagnose and fix problems when that happens.
 
@@ -714,6 +773,7 @@ Update [docs/API.md](docs/API.md) with any endpoint changes so future maintainer
 
 ## Further reading
 
+- [webapp/README.md](webapp/README.md) — Dashboard webapp: full documentation, all pages, JSON API, debugging guide
 - [docs/API.md](docs/API.md) — Complete FPL API endpoint reference
 - [docs/SCHEMA.md](docs/SCHEMA.md) — All database tables and columns with descriptions
 - [docs/SETUP.md](docs/SETUP.md) — Condensed setup guide
