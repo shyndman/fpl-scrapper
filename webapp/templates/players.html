@@ -11,8 +11,27 @@
         {{ total }} player{% if total != 1 %}s{% endif %} found
       </p>
     </div>
-    <!-- Sort -->
-    <div class="flex items-center gap-2">
+    <!-- View toggle + Sort -->
+    <div class="flex items-center gap-3">
+      <!-- Grid / Compact view toggle -->
+      <div class="flex gap-1 rounded-lg p-0.5" style="background:#0f1729; border:1px solid #1e2d4a;">
+        <button @click="setView('grid')"
+                :style="view === 'grid' ? 'background:#1e2d4a; color:#00ff87;' : 'color:#64748b;'"
+                class="rounded-md p-1.5 transition-all" title="Grid view">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+            <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/>
+            <rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>
+          </svg>
+        </button>
+        <button @click="setView('compact')"
+                :style="view === 'compact' ? 'background:#1e2d4a; color:#00ff87;' : 'color:#64748b;'"
+                class="rounded-md p-1.5 transition-all" title="Compact view">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+            <rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/>
+            <rect x="1" y="12" width="14" height="2" rx="1"/>
+          </svg>
+        </button>
+      </div>
       <span class="text-xs" style="color:#64748b;">Sort by</span>
       <form method="get" id="sort-form">
         {% if filter_pos is not none %}<input type="hidden" name="pos" value="{{ filter_pos }}" />{% endif %}
@@ -40,6 +59,13 @@
           {% endfor %}
         </select>
       </form>
+      <!-- Flip sort direction — works for both grid and compact views -->
+      <button onclick="toggleSortOrder()"
+              class="flex items-center gap-1 text-sm rounded-lg px-2.5 py-2 border transition-all"
+              style="background:#0f1729; border-color:#1e2d4a; color:{{ '#00ff87' if filter_order == 'asc' else '#e2e8f0' }};"
+              title="{{ 'Ascending — click for descending' if filter_order == 'asc' else 'Descending — click for ascending' }}">
+        {% if filter_order == 'asc' %}↑ Asc{% else %}↓ Desc{% endif %}
+      </button>
     </div>
   </div>
 
@@ -132,7 +158,7 @@
 
   <!-- Player Grid -->
   {% if players %}
-  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
+  <div x-show="view === 'grid'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
     {% for p in players %}
     <a href="/players/{{ p.fpl_id }}"
        class="card card-clickable flex flex-col no-underline overflow-hidden">
@@ -203,7 +229,169 @@
       </div>
     </a>
     {% endfor %}
-  </div>
+  </div><!-- end grid -->
+
+  {# Compact row view — all stats in a dense, horizontally-scrollable table.
+     Colour palette shorthand used in header/cell inline styles: #}
+  {% set _h = '#00ff87' %}{# highlight: active sort column #}
+  {% set _m = '#64748b' %}{# muted: column header default   #}
+  {% set _t = '#e2e8f0' %}{# text:  cell value default      #}
+  {% set fs = filter_sort %}
+
+  <div x-show="view === 'compact'" class="overflow-x-auto mb-8">
+    <table class="w-full text-xs whitespace-nowrap border-collapse">
+      <!-- ── Header ─────────────────────────────────────────────────────── -->
+      <thead>
+        <tr style="border-bottom:2px solid #1e2d4a;">
+          <!-- Player column: sticky so it stays visible while scrolling -->
+          <th onclick="sortByColumn('web_name')"
+              class="text-left py-2 pr-6 font-semibold uppercase tracking-wider cursor-pointer"
+              style="color:{{ _h if fs == 'web_name' else _m }}; position:sticky; left:0; background:#0a0e1a; z-index:1; user-select:none;">
+            Player {% if fs == 'web_name' %}{{ '↑' if filter_order == 'asc' else '↓' }}{% else %}<span style="opacity:0.25;">↕</span>{% endif %}
+          </th>
+          {% set headers = [
+            ('now_cost',                    '£',    'Price'),
+            ('total_points',               'Pts',   'Total Points'),
+            ('points_per_game',            'PPG',   'Points Per Game'),
+            ('goals_scored',               'G',     'Goals'),
+            ('assists',                    'A',     'Assists'),
+            ('clean_sheets',               'CS',    'Clean Sheets'),
+            ('goals_conceded',             'GC',    'Goals Conceded'),
+            ('bonus',                      'Bon',   'Bonus Points'),
+            ('bps',                        'BPS',   'Bonus Points System'),
+            ('minutes',                    'Mins',  'Minutes Played'),
+            ('expected_goals',             'xG',    'Expected Goals'),
+            ('expected_assists',           'xA',    'Expected Assists'),
+            ('expected_goal_involvements', 'xGI',   'Expected Goal Involvements'),
+            ('expected_goals_conceded',    'xGC',   'Expected Goals Conceded'),
+            ('influence',                  'Inf',   'Influence'),
+            ('creativity',                 'Crt',   'Creativity'),
+            ('threat',                     'Thr',   'Threat'),
+            ('ict_index',                  'ICT',   'ICT Index'),
+            ('form',                       'Form',  'Form (last 5 GWs)'),
+            ('selected_by_percent',        'Own%',  'Ownership %'),
+            ('transfers_in',               'Trans+','Transfers In'),
+          ] %}
+          {% for field, abbr, tooltip in headers %}
+          <th title="{{ tooltip }}" onclick="sortByColumn('{{ field }}')"
+              class="text-right py-2 px-2 font-semibold uppercase tracking-wider cursor-pointer"
+              style="color:{{ _h if fs == field else _m }}; user-select:none;">
+            {{ abbr }} {% if fs == field %}{{ '↑' if filter_order == 'asc' else '↓' }}{% else %}<span style="opacity:0.25;">↕</span>{% endif %}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+
+      <!-- ── Rows ───────────────────────────────────────────────────────── -->
+      <tbody>
+        {% for p in players %}
+        <tr class="border-b transition-colors"
+            style="border-color:#1e2d4a;"
+            onmouseover="this.style.background='#0f1729'"
+            onmouseout="this.style.background='transparent'">
+
+          <!-- Player cell: sticky -->
+          <td style="position:sticky; left:0; background:inherit; z-index:1;">
+            <a href="/players/{{ p.fpl_id }}"
+               class="flex items-center gap-2 py-1.5 pr-6 no-underline">
+              <img src="{{ player_photo_url(p.code) }}"
+                   alt="{{ p.web_name }}"
+                   class="rounded object-cover flex-shrink-0"
+                   style="width:28px; height:36px;"
+                   onerror="this.src='/static/images/placeholder_player.png'" />
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 mb-0.5">
+                  <span class="pos-pill {{ p.element_type | position_color }}"
+                        style="font-size:0.6rem; padding:1px 4px;">
+                    {{ p.element_type | position_name }}
+                  </span>
+                  {% if p.status and p.status != 'a' %}
+                  <span class="status-dot {{ 'doubt' if p.status == 'd' else 'injured' if p.status == 'i' else 'suspended' }}"
+                        style="width:6px; height:6px;"
+                        title="{{ p.status | status_label }}"></span>
+                  {% endif %}
+                </div>
+                <p class="font-semibold leading-tight" style="color:#e2e8f0;">{{ p.web_name }}</p>
+                <div class="flex items-center gap-1">
+                  <img src="{{ team_badge_url(p.team_fpl_id) }}"
+                       style="width:12px; height:12px; object-fit:contain;"
+                       onerror="this.src='/static/images/placeholder_badge.png'" />
+                  <span style="color:#64748b;">{{ p.team_short_name }}</span>
+                </div>
+              </div>
+            </a>
+          </td>
+
+          <!-- Data cells (order must match headers list above) -->
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'now_cost' else _t }};">
+            {{ p.now_cost | format_cost }}
+          </td>
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'total_points' else _t }};">
+            {{ p.total_points or 0 }}
+          </td>
+          <td class="text-right px-2" style="color:{{ _h if fs == 'points_per_game' else _t }};">
+            {{ p.points_per_game or '0.0' }}
+          </td>
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'goals_scored' else _t }};">
+            {{ p.goals_scored or 0 }}
+          </td>
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'assists' else _t }};">
+            {{ p.assists or 0 }}
+          </td>
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'clean_sheets' else _t }};">
+            {{ p.clean_sheets or 0 }}
+          </td>
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'goals_conceded' else _t }};">
+            {{ p.goals_conceded or 0 }}
+          </td>
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'bonus' else _t }};">
+            {{ p.bonus or 0 }}
+          </td>
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'bps' else _t }};">
+            {{ p.bps or 0 }}
+          </td>
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'minutes' else _t }};">
+            {{ p.minutes or 0 }}
+          </td>
+          <td class="text-right px-2" style="color:{{ _h if fs == 'expected_goals' else _t }};">
+            {{ p.expected_goals or '0.00' }}
+          </td>
+          <td class="text-right px-2" style="color:{{ _h if fs == 'expected_assists' else _t }};">
+            {{ p.expected_assists or '0.00' }}
+          </td>
+          <td class="text-right px-2" style="color:{{ _h if fs == 'expected_goal_involvements' else _t }};">
+            {{ p.expected_goal_involvements or '0.00' }}
+          </td>
+          <td class="text-right px-2" style="color:{{ _h if fs == 'expected_goals_conceded' else _t }};">
+            {{ p.expected_goals_conceded or '0.00' }}
+          </td>
+          <td class="text-right px-2" style="color:{{ _h if fs == 'influence' else _t }};">
+            {{ p.influence or '0.0' }}
+          </td>
+          <td class="text-right px-2" style="color:{{ _h if fs == 'creativity' else _t }};">
+            {{ p.creativity or '0.0' }}
+          </td>
+          <td class="text-right px-2" style="color:{{ _h if fs == 'threat' else _t }};">
+            {{ p.threat or '0.0' }}
+          </td>
+          <td class="text-right px-2" style="color:{{ _h if fs == 'ict_index' else _t }};">
+            {{ p.ict_index or '0.0' }}
+          </td>
+          <td class="text-right px-2" style="color:{{ _h if fs == 'form' else _t }};">
+            {{ p.form or '0.0' }}
+          </td>
+          <td class="text-right px-2" style="color:{{ _h if fs == 'selected_by_percent' else _t }};">
+            {{ p.selected_by_percent or '0.0' }}%
+          </td>
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'transfers_in' else _t }};">
+            {{ p.transfers_in or 0 }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div><!-- end compact -->
+
   {% else %}
   <div class="card p-12 text-center" style="color:#64748b;">
     <p class="text-lg mb-2">No players match your filters</p>
@@ -243,7 +431,39 @@
 {% block scripts %}
 <script>
 function playerFilters() {
-  return {};
+  return {
+    view: localStorage.getItem('players_view') || 'grid',
+    setView(v) {
+      this.view = v;
+      localStorage.setItem('players_view', v);
+    },
+  };
+}
+
+/**
+ * Click a compact-table column header to sort by that field.
+ * Same field → toggles desc↔asc. New field → defaults to desc.
+ * Resets pagination to page 1 on every sort change.
+ */
+function sortByColumn(field) {
+  const params = new URLSearchParams(window.location.search);
+  const currentSort = params.get('sort') || 'total_points';
+  const currentOrder = params.get('order') || 'desc';
+  params.set('sort', field);
+  params.set('order', (field === currentSort && currentOrder === 'desc') ? 'asc' : 'desc');
+  params.delete('page');
+  window.location.search = params.toString();
+}
+
+/**
+ * Flip the current sort order without changing the sort field.
+ * Used by the ↑ Asc / ↓ Desc toggle button in the header.
+ */
+function toggleSortOrder() {
+  const params = new URLSearchParams(window.location.search);
+  params.set('order', (params.get('order') || 'desc') === 'desc' ? 'asc' : 'desc');
+  params.delete('page');
+  window.location.search = params.toString();
 }
 
 /**
