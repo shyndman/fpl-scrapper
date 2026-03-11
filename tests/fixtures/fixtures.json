@@ -1,0 +1,27 @@
+[
+  {
+    "id": 1,
+    "code": 2500001,
+    "event": 1,
+    "finished": true,
+    "finished_provisional": true,
+    "kickoff_time": "2024-08-17T12:30:00Z",
+    "minutes": 90,
+    "provisional_start_time": false,
+    "started": true,
+    "team_a": 3,
+    "team_a_score": 1,
+    "team_h": 14,
+    "team_h_score": 1,
+    "team_h_difficulty": 3,
+    "team_a_difficulty": 3,
+    "pulse_id": 101,
+    "stats": [
+      {
+        "identifier": "goals_scored",
+        "h": [{"value": 1, "element": 200}],
+        "a": [{"value": 1, "element": 150}]
+      }
+    ]
+  }
+]
