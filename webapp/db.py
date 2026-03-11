@@ -168,13 +168,29 @@ def get_players(
 ) -> tuple[list[dict], int]:
     """Return (players, total_count). Prices in tenths (e.g. 130 = £13.0m)."""
     valid_sorts = {
-        "total_points", "now_cost", "form", "selected_by_percent",
-        "goals_scored", "assists", "minutes", "web_name",
-        "points_per_game", "transfers_in", "bonus",
+        # Integer columns — sort as-is
+        "total_points", "now_cost", "goals_scored", "assists", "minutes",
+        "transfers_in", "bonus", "clean_sheets", "goals_conceded", "bps",
+        # Text columns with numeric values — need CAST AS REAL for correct ordering
+        "form", "selected_by_percent", "points_per_game",
+        "influence", "creativity", "threat", "ict_index",
+        "expected_goals", "expected_assists",
+        "expected_goal_involvements", "expected_goals_conceded",
+        # Text sort (alphabetic)
+        "web_name",
+    }
+    # TEXT columns that store numeric values: must CAST to REAL so that e.g.
+    # "12.4" sorts after "9.5" rather than before it (lexicographic pitfall).
+    _text_numeric = {
+        "form", "selected_by_percent", "points_per_game",
+        "influence", "creativity", "threat", "ict_index",
+        "expected_goals", "expected_assists",
+        "expected_goal_involvements", "expected_goals_conceded",
     }
     if sort not in valid_sorts:
         sort = "total_points"
     order_dir = "DESC" if order.lower() == "desc" else "ASC"
+    sort_expr = f"CAST(p.{sort} AS REAL)" if sort in _text_numeric else f"p.{sort}"
 
     conditions: list[str] = []
     params: list[Any] = []
@@ -215,7 +231,7 @@ def get_players(
         FROM players p
         JOIN teams t ON t.fpl_id = p.team_fpl_id
         {where}
-        ORDER BY p.{sort} {order_dir}
+        ORDER BY {sort_expr} {order_dir}
         LIMIT ? OFFSET ?
     """
     cur = db.execute(data_sql, params + [per_page, offset])

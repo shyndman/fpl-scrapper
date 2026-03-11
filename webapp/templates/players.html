@@ -25,10 +25,15 @@
                 class="text-sm rounded-lg px-3 py-2 border focus:outline-none"
                 style="background:#0f1729; border-color:#1e2d4a; color:#e2e8f0;">
           {% set sort_opts = [
-            ('total_points','Total Pts'),('form','Form'),('now_cost','Price'),
-            ('points_per_game','PPG'),('goals_scored','Goals'),
-            ('assists','Assists'),('minutes','Minutes'),('bonus','Bonus'),
-            ('selected_by_percent','Ownership'),
+            ('total_points','Total Pts'), ('form','Form'),          ('now_cost','Price'),
+            ('points_per_game','PPG'),    ('goals_scored','Goals'), ('assists','Assists'),
+            ('clean_sheets','Clean Sheets'),('goals_conceded','Goals Conceded'),
+            ('minutes','Minutes'),        ('bonus','Bonus'),        ('bps','BPS'),
+            ('selected_by_percent','Ownership'),('transfers_in','Transfers In'),
+            ('influence','Influence'),    ('creativity','Creativity'),
+            ('threat','Threat'),          ('ict_index','ICT Index'),
+            ('expected_goals','xG'),      ('expected_assists','xA'),
+            ('expected_goal_involvements','xGI'),('expected_goals_conceded','xGC'),
           ] %}
           {% for val, label in sort_opts %}
           <option value="{{ val }}" {% if filter_sort == val %}selected{% endif %}>{{ label }}</option>
@@ -113,10 +118,15 @@
      Fields 'now_cost' and 'web_name' have no meaningful numeric highlight,
      so the card falls back to showing Total Pts for those. #}
   {% set _sort_labels = {
-    'total_points': 'Total Pts', 'form': 'Form',       'now_cost': 'Price',
-    'points_per_game': 'PPG',    'goals_scored': 'Goals', 'assists': 'Assists',
-    'minutes': 'Mins',           'bonus': 'Bonus',       'selected_by_percent': 'Owned',
-    'transfers_in': 'Trans+',    'web_name': 'Name',
+    'total_points': 'Total Pts',  'form': 'Form',          'now_cost': 'Price',
+    'points_per_game': 'PPG',     'goals_scored': 'Goals', 'assists': 'Assists',
+    'clean_sheets': 'CS',         'goals_conceded': 'GC',  'minutes': 'Mins',
+    'bonus': 'Bonus',             'bps': 'BPS',            'selected_by_percent': 'Owned',
+    'transfers_in': 'Trans+',     'influence': 'Influence','creativity': 'Creativity',
+    'threat': 'Threat',           'ict_index': 'ICT',
+    'expected_goals': 'xG',       'expected_assists': 'xA',
+    'expected_goal_involvements': 'xGI', 'expected_goals_conceded': 'xGC',
+    'web_name': 'Name',
   } %}
   {% set _sort_sfx = {'total_points': ' pts', 'selected_by_percent': '%'} %}
 
@@ -171,11 +181,18 @@
           </div>
         </div>
 
-        <!-- Always-visible mini stats: G / A / Pts -->
+        <!-- Always-visible mini stats row 1: G / A / CS / Pts -->
         <div class="flex justify-between text-xs mt-1.5 pt-1.5 border-t" style="border-color:#1e2d4a; color:#64748b;">
           <span>G <strong style="color:#e2e8f0;">{{ p.goals_scored or 0 }}</strong></span>
           <span>A <strong style="color:#e2e8f0;">{{ p.assists or 0 }}</strong></span>
+          <span>CS <strong style="color:#e2e8f0;">{{ p.clean_sheets or 0 }}</strong></span>
           <span>Pts <strong style="color:#e2e8f0;">{{ p.total_points or 0 }}</strong></span>
+        </div>
+        <!-- Mini stats row 2: xG / xA / ICT -->
+        <div class="flex justify-between text-xs" style="color:#64748b;">
+          <span>xG <strong style="color:#e2e8f0;">{{ p.expected_goals or '0.00' }}</strong></span>
+          <span>xA <strong style="color:#e2e8f0;">{{ p.expected_assists or '0.00' }}</strong></span>
+          <span>ICT <strong style="color:#e2e8f0;">{{ p.ict_index or '0.0' }}</strong></span>
         </div>
 
         <!-- Form + Ownership -->
