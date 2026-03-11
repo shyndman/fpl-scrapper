@@ -109,6 +109,17 @@
     </form>
   </div>
 
+  {# Sort field metadata: label shown on card, suffix appended to value.
+     Fields 'now_cost' and 'web_name' have no meaningful numeric highlight,
+     so the card falls back to showing Total Pts for those. #}
+  {% set _sort_labels = {
+    'total_points': 'Total Pts', 'form': 'Form',       'now_cost': 'Price',
+    'points_per_game': 'PPG',    'goals_scored': 'Goals', 'assists': 'Assists',
+    'minutes': 'Mins',           'bonus': 'Bonus',       'selected_by_percent': 'Owned',
+    'transfers_in': 'Trans+',    'web_name': 'Name',
+  } %}
+  {% set _sort_sfx = {'total_points': ' pts', 'selected_by_percent': '%'} %}
+
   <!-- Player Grid -->
   {% if players %}
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
@@ -142,20 +153,34 @@
           <span class="text-xs" style="color:#64748b;">{{ p.team_short_name }}</span>
         </div>
 
+        <!-- Price  +  sort-highlighted stat -->
         <div class="mt-auto pt-2 flex items-end justify-between">
           <div>
             <p class="text-xs" style="color:#64748b;">Price</p>
             <p class="font-bold text-sm stat-num">{{ p.now_cost | format_cost }}</p>
           </div>
           <div class="text-right">
-            <p class="text-xs" style="color:#64748b;">Total</p>
-            <p class="font-bold stat-num" style="color:#00ff87;">{{ p.total_points or 0 }} pts</p>
+            {% if filter_sort in ('now_cost', 'web_name') %}
+              {# No meaningful numeric stat for these sorts — fall back to total pts #}
+              <p class="text-xs" style="color:#64748b;">Total Pts</p>
+              <p class="font-bold stat-num" style="color:#00ff87;">{{ p.total_points or 0 }} pts</p>
+            {% else %}
+              <p class="text-xs" style="color:#64748b;">{{ _sort_labels.get(filter_sort, 'Total Pts') }}</p>
+              <p class="font-bold stat-num" style="color:#00ff87;">{{ p[filter_sort] or 0 }}{{ _sort_sfx.get(filter_sort, '') }}</p>
+            {% endif %}
           </div>
+        </div>
+
+        <!-- Always-visible mini stats: G / A / Pts -->
+        <div class="flex justify-between text-xs mt-1.5 pt-1.5 border-t" style="border-color:#1e2d4a; color:#64748b;">
+          <span>G <strong style="color:#e2e8f0;">{{ p.goals_scored or 0 }}</strong></span>
+          <span>A <strong style="color:#e2e8f0;">{{ p.assists or 0 }}</strong></span>
+          <span>Pts <strong style="color:#e2e8f0;">{{ p.total_points or 0 }}</strong></span>
         </div>
 
         <!-- Form + Ownership -->
         <div class="flex justify-between text-xs" style="color:#64748b;">
-          <span>Form: <strong style="color:#e2e8f0;">{{ p.form or '0.0' }}</strong></span>
+          <span>Form <strong style="color:#e2e8f0;">{{ p.form or '0.0' }}</strong></span>
           <span>{{ p.selected_by_percent or '0.0' }}% own</span>
         </div>
       </div>
