@@ -60,7 +60,11 @@ def download_images(db_path: str) -> None:
     try:
         conn = sqlite3.connect(db_path)
         player_rows = conn.execute("SELECT DISTINCT code FROM players WHERE code IS NOT NULL").fetchall()
-        team_rows = conn.execute("SELECT DISTINCT fpl_id FROM teams").fetchall()
+        # Fetch fpl_id + CDN code; the CDN badge URL uses the historical team
+        # code (e.g. Arsenal=3), not the season-specific fpl_id (1–20).
+        team_rows = conn.execute(
+            "SELECT fpl_id, code FROM teams WHERE code IS NOT NULL"
+        ).fetchall()
         conn.close()
     except Exception as exc:
         logger.warning("Could not read DB for image download: %s", exc)
@@ -97,14 +101,17 @@ def download_images(db_path: str) -> None:
     )
 
     # --- Team badges ---
+    # The CDN uses the team's historical "code" (e.g. Arsenal=3, Man Utd=1),
+    # NOT the season-specific fpl_id (1–20).  We save as t{fpl_id}.png so the
+    # rest of the app can look up badges by fpl_id without an extra join.
     badge_dir = _STATIC_DIR / "badges"
     downloaded = skipped = failed = 0
-    for (team_id,) in team_rows:
-        dest = badge_dir / f"t{team_id}.png"
+    for (fpl_id, code) in team_rows:
+        dest = badge_dir / f"t{fpl_id}.png"
         if dest.exists():
             skipped += 1
             continue
-        url = TEAM_BADGE_URL.format(team_id=team_id)
+        url = TEAM_BADGE_URL.format(team_id=code)
         ok = _download(url, dest, session)
         if ok:
             downloaded += 1

@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS teams (
     fpl_id                  INTEGER NOT NULL UNIQUE,
     name                    TEXT NOT NULL,
     short_name              TEXT NOT NULL,
+    code                    INTEGER,
     strength                INTEGER,
     strength_overall_home   INTEGER,
     strength_overall_away   INTEGER,
@@ -379,12 +380,12 @@ class FPLDatabase:
     def upsert_teams(self, teams: list[Team]) -> int:
         sql = """
         INSERT OR REPLACE INTO teams
-            (fpl_id, name, short_name, strength,
+            (fpl_id, name, short_name, code, strength,
              strength_overall_home, strength_overall_away,
              strength_attack_home, strength_attack_away,
              strength_defence_home, strength_defence_away,
              pulse_id, scraped_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         """
         with self._conn:
             self._conn.executemany(sql, [t.to_db_tuple() for t in teams])

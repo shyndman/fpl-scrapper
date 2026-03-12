@@ -66,6 +66,7 @@ class Team:
     fpl_id: int
     name: str
     short_name: str
+    code: int | None
     strength: int | None
     strength_overall_home: int | None
     strength_overall_away: int | None
@@ -82,6 +83,7 @@ class Team:
             fpl_id=int(d["id"]),
             name=str(d["name"]),
             short_name=str(d["short_name"]),
+            code=_int(d.get("code")),
             strength=_int(d.get("strength")),
             strength_overall_home=_int(d.get("strength_overall_home")),
             strength_overall_away=_int(d.get("strength_overall_away")),
@@ -97,6 +99,7 @@ class Team:
             self.fpl_id,
             self.name,
             self.short_name,
+            self.code,
             self.strength,
             self.strength_overall_home,
             self.strength_overall_away,
