@@ -388,13 +388,13 @@
           <td class="text-right px-2" style="color:{{ _h if fs == 'expected_goals_conceded' else _t }};">
             {{ p.expected_goals_conceded or '0.00' }}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'xgp' else ('#00ff87' if p.xgp and p.xgp > 0 else ('#f87171' if p.xgp and p.xgp < 0 else _t)) }};">
+          <td class="text-right px-2 stat-num" style="color:{{ '#00ff87' if p.xgp and p.xgp > 0 else ('#f87171' if p.xgp and p.xgp < 0 else (_h if fs == 'xgp' else _t)) }};">
             {{ '%.2f'|format(p.xgp) if p.xgp is not none else '—' }}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'xap' else ('#00ff87' if p.xap and p.xap > 0 else ('#f87171' if p.xap and p.xap < 0 else _t)) }};">
+          <td class="text-right px-2 stat-num" style="color:{{ '#00ff87' if p.xap and p.xap > 0 else ('#f87171' if p.xap and p.xap < 0 else (_h if fs == 'xap' else _t)) }};">
             {{ '%.2f'|format(p.xap) if p.xap is not none else '—' }}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'xgip' else ('#00ff87' if p.xgip and p.xgip > 0 else ('#f87171' if p.xgip and p.xgip < 0 else _t)) }};">
+          <td class="text-right px-2 stat-num" style="color:{{ '#00ff87' if p.xgip and p.xgip > 0 else ('#f87171' if p.xgip and p.xgip < 0 else (_h if fs == 'xgip' else _t)) }};">
             {{ '%.2f'|format(p.xgip) if p.xgip is not none else '—' }}
           </td>
           <td class="text-right px-2" style="color:{{ _h if fs == 'influence' else _t }};">
