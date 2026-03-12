@@ -42,8 +42,26 @@ def get_db() -> sqlite3.Connection:
     return _local.conn
 
 
+# Fields that are REAL in the schema but may be stored as TEXT in older DBs
+# (SQLite TEXT affinity columns store numeric values as strings).  We coerce
+# them to float here so the rest of the app always sees the correct type.
+_COERCE_TO_FLOAT = frozenset({
+    "expected_goals", "expected_assists", "expected_goal_involvements",
+})
+
+
 def rows_to_dicts(rows: list[sqlite3.Row]) -> list[dict]:
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        d = dict(r)
+        for field in _COERCE_TO_FLOAT:
+            if field in d and d[field] is not None:
+                try:
+                    d[field] = float(d[field])
+                except (ValueError, TypeError):
+                    pass
+        result.append(d)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -159,9 +177,9 @@ def get_teams_with_stats() -> list[dict]:
     LEFT JOIN (
         SELECT
             team_fpl_id,
-            ROUND(COALESCE(SUM(CAST(expected_goals             AS REAL)), 0), 2) AS team_xg,
-            ROUND(COALESCE(SUM(CAST(expected_assists           AS REAL)), 0), 2) AS team_xa,
-            ROUND(COALESCE(SUM(CAST(expected_goal_involvements AS REAL)), 0), 2) AS team_xgi,
+            ROUND(COALESCE(SUM(expected_goals),             0), 2) AS team_xg,
+            ROUND(COALESCE(SUM(expected_assists),           0), 2) AS team_xa,
+            ROUND(COALESCE(SUM(expected_goal_involvements), 0), 2) AS team_xgi,
             ROUND(COALESCE(SUM(xgp),  0), 2)                                     AS team_xgp,
             ROUND(COALESCE(SUM(xap),  0), 2)                                     AS team_xap,
             ROUND(COALESCE(SUM(xgip), 0), 2)                                     AS team_xgip
@@ -202,20 +220,23 @@ def get_players(
         "transfers_in", "bonus", "clean_sheets", "goals_conceded", "bps",
         # REAL columns — sort as-is (no CAST needed)
         "xgp", "xap", "xgip",
+        "expected_goals", "expected_assists", "expected_goal_involvements",
         # Text columns with numeric values — need CAST AS REAL for correct ordering
         "form", "selected_by_percent", "points_per_game",
         "influence", "creativity", "threat", "ict_index",
-        "expected_goals", "expected_assists",
-        "expected_goal_involvements", "expected_goals_conceded",
+        "expected_goals_conceded",
         # Text sort (alphabetic)
         "web_name",
     }
-    # TEXT columns in `players` that store numeric values.
+    # Columns that require CAST AS REAL for correct ORDER BY in the season-totals
+    # path.  Includes TEXT-affinity columns (influence, form, etc.) AND the three
+    # xG fields whose SQLite column affinity is still TEXT in existing databases
+    # (SQLite cannot change column affinity without a full table rebuild).
     _text_numeric = {
         "form", "selected_by_percent", "points_per_game",
         "influence", "creativity", "threat", "ict_index",
-        "expected_goals", "expected_assists",
-        "expected_goal_involvements", "expected_goals_conceded",
+        "expected_goals_conceded",
+        "expected_goals", "expected_assists", "expected_goal_involvements",
     }
     # Columns that are aggregated from player_history when GW range is active.
     # In the CTE these are already proper numbers so no CAST is needed for sort.
@@ -292,10 +313,10 @@ def get_players(
                 COALESCE(SUM(bonus),                                                   0) AS bonus,
                 COALESCE(SUM(bps),                                                     0) AS bps,
                 COALESCE(SUM(transfers_in),                                            0) AS transfers_in,
-                ROUND(COALESCE(SUM(CAST(expected_goals              AS REAL)), 0), 2)    AS expected_goals,
-                ROUND(COALESCE(SUM(CAST(expected_assists            AS REAL)), 0), 2)    AS expected_assists,
-                ROUND(COALESCE(SUM(CAST(expected_goal_involvements  AS REAL)), 0), 2)    AS expected_goal_involvements,
-                ROUND(COALESCE(SUM(CAST(expected_goals_conceded     AS REAL)), 0), 2)    AS expected_goals_conceded,
+                ROUND(COALESCE(SUM(expected_goals),             0), 2)                   AS expected_goals,
+                ROUND(COALESCE(SUM(expected_assists),           0), 2)                   AS expected_assists,
+                ROUND(COALESCE(SUM(expected_goal_involvements), 0), 2)                   AS expected_goal_involvements,
+                ROUND(COALESCE(SUM(CAST(expected_goals_conceded AS REAL)), 0), 2)        AS expected_goals_conceded,
                 ROUND(COALESCE(SUM(xgp),                               0), 2)            AS xgp,
                 ROUND(COALESCE(SUM(xap),                               0), 2)            AS xap,
                 ROUND(COALESCE(SUM(xgip),                              0), 2)            AS xgip

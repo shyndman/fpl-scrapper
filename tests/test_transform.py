@@ -57,10 +57,11 @@ class TestTransformBootstrap:
         data = load("bootstrap_static.json")
         _, _, players = transform_bootstrap(data)
         p = players[0]
-        # These stay as strings (FPL returns them as strings)
+        # form/selected_by_percent stay as strings (FPL returns them as strings)
         assert p.form == "12.8"
         assert p.selected_by_percent == "45.2"
-        assert p.expected_goals == "15.34"
+        # expected_goals is now stored as REAL (float)
+        assert p.expected_goals == 15.34
 
     def test_missing_optional_fields(self):
         """Bootstrap with minimal required fields should not raise."""

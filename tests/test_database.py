@@ -73,7 +73,7 @@ class TestUpsertTeams:
         db.upsert_teams(teams)
         # Modify and upsert again
         teams[0] = Team(
-            fpl_id=1, name="Arsenal FC", short_name="ARS",
+            fpl_id=1, name="Arsenal FC", short_name="ARS", code=None,
             strength=5, strength_overall_home=None, strength_overall_away=None,
             strength_attack_home=None, strength_attack_away=None,
             strength_defence_home=None, strength_defence_away=None, pulse_id=1,

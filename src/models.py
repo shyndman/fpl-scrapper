@@ -35,11 +35,21 @@ def _float_str(v: Any) -> str | None:
     return s if s else None
 
 
+def _float(v: Any) -> float | None:
+    """Parse a value to float, returning None if missing or unparseable."""
+    if v is None:
+        return None
+    try:
+        return float(v)
+    except (ValueError, TypeError):
+        return None
+
+
 def _bool_int(v: Any) -> int:
     return 1 if v else 0
 
 
-def _xp(actual: int, expected: str | None) -> float | None:
+def _xp(actual: int, expected: float | None) -> float | None:
     """
     Calculate performance vs expectation (actual minus expected).
     Returns None when expected is unavailable.  Result is rounded to 2 d.p.
@@ -48,7 +58,7 @@ def _xp(actual: int, expected: str | None) -> float | None:
     if expected is None:
         return None
     try:
-        return round(actual - float(expected), 2)
+        return round(actual - expected, 2)
     except (ValueError, TypeError):
         return None
 
@@ -224,9 +234,9 @@ class Player:
     threat: str | None
     ict_index: str | None
     starts: int
-    expected_goals: str | None
-    expected_assists: str | None
-    expected_goal_involvements: str | None
+    expected_goals: float | None
+    expected_assists: float | None
+    expected_goal_involvements: float | None
     expected_goals_conceded: str | None
     xgp: float | None   # goals_scored  - expected_goals
     xap: float | None   # assists        - expected_assists
@@ -239,8 +249,8 @@ class Player:
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "Player":
-        xgp  = _xp(int(d.get("goals_scored", 0)), _float_str(d.get("expected_goals")))
-        xap  = _xp(int(d.get("assists",       0)), _float_str(d.get("expected_assists")))
+        xgp  = _xp(int(d.get("goals_scored", 0)), _float(d.get("expected_goals")))
+        xap  = _xp(int(d.get("assists",       0)), _float(d.get("expected_assists")))
         xgip = round(xgp + xap, 2) if xgp is not None and xap is not None else None
         return cls(
             fpl_id=int(d["id"]),
@@ -283,9 +293,9 @@ class Player:
             threat=_float_str(d.get("threat")),
             ict_index=_float_str(d.get("ict_index")),
             starts=int(d.get("starts", 0)),
-            expected_goals=_float_str(d.get("expected_goals")),
-            expected_assists=_float_str(d.get("expected_assists")),
-            expected_goal_involvements=_float_str(d.get("expected_goal_involvements")),
+            expected_goals=_float(d.get("expected_goals")),
+            expected_assists=_float(d.get("expected_assists")),
+            expected_goal_involvements=_float(d.get("expected_goal_involvements")),
             expected_goals_conceded=_float_str(d.get("expected_goals_conceded")),
             xgp=xgp, xap=xap, xgip=xgip,
             news=_str(d.get("news")),
@@ -348,9 +358,9 @@ class PlayerHistory:
     threat: str | None
     ict_index: str | None
     starts: int
-    expected_goals: str | None
-    expected_assists: str | None
-    expected_goal_involvements: str | None
+    expected_goals: float | None
+    expected_assists: float | None
+    expected_goal_involvements: float | None
     expected_goals_conceded: str | None
     xgp: float | None
     xap: float | None
@@ -365,8 +375,8 @@ class PlayerHistory:
 
     @classmethod
     def from_dict(cls, player_fpl_id: int, d: dict[str, Any]) -> "PlayerHistory":
-        xgp  = _xp(int(d.get("goals_scored", 0)), _float_str(d.get("expected_goals")))
-        xap  = _xp(int(d.get("assists",       0)), _float_str(d.get("expected_assists")))
+        xgp  = _xp(int(d.get("goals_scored", 0)), _float(d.get("expected_goals")))
+        xap  = _xp(int(d.get("assists",       0)), _float(d.get("expected_assists")))
         xgip = round(xgp + xap, 2) if xgp is not None and xap is not None else None
         return cls(
             player_fpl_id=player_fpl_id,
@@ -393,9 +403,9 @@ class PlayerHistory:
             threat=_float_str(d.get("threat")),
             ict_index=_float_str(d.get("ict_index")),
             starts=int(d.get("starts", 0)),
-            expected_goals=_float_str(d.get("expected_goals")),
-            expected_assists=_float_str(d.get("expected_assists")),
-            expected_goal_involvements=_float_str(d.get("expected_goal_involvements")),
+            expected_goals=_float(d.get("expected_goals")),
+            expected_assists=_float(d.get("expected_assists")),
+            expected_goal_involvements=_float(d.get("expected_goal_involvements")),
             expected_goals_conceded=_float_str(d.get("expected_goals_conceded")),
             xgp=xgp,
             xap=xap,
@@ -458,9 +468,9 @@ class PlayerHistoryPast:
     threat: str | None
     ict_index: str | None
     starts: int
-    expected_goals: str | None
-    expected_assists: str | None
-    expected_goal_involvements: str | None
+    expected_goals: float | None
+    expected_assists: float | None
+    expected_goal_involvements: float | None
     expected_goals_conceded: str | None
     scraped_at: str = field(default_factory=_now)
 
@@ -491,9 +501,9 @@ class PlayerHistoryPast:
             threat=_float_str(d.get("threat")),
             ict_index=_float_str(d.get("ict_index")),
             starts=int(d.get("starts", 0)),
-            expected_goals=_float_str(d.get("expected_goals")),
-            expected_assists=_float_str(d.get("expected_assists")),
-            expected_goal_involvements=_float_str(d.get("expected_goal_involvements")),
+            expected_goals=_float(d.get("expected_goals")),
+            expected_assists=_float(d.get("expected_assists")),
+            expected_goal_involvements=_float(d.get("expected_goal_involvements")),
             expected_goals_conceded=_float_str(d.get("expected_goals_conceded")),
         )
 
@@ -596,9 +606,9 @@ class LiveGameweekStats:
     threat: str | None
     ict_index: str | None
     starts: int
-    expected_goals: str | None
-    expected_assists: str | None
-    expected_goal_involvements: str | None
+    expected_goals: float | None
+    expected_assists: float | None
+    expected_goal_involvements: float | None
     expected_goals_conceded: str | None
     total_points: int
     in_dreamteam: int
@@ -633,9 +643,9 @@ class LiveGameweekStats:
             threat=_float_str(stats.get("threat")),
             ict_index=_float_str(stats.get("ict_index")),
             starts=int(stats.get("starts", 0)),
-            expected_goals=_float_str(stats.get("expected_goals")),
-            expected_assists=_float_str(stats.get("expected_assists")),
-            expected_goal_involvements=_float_str(stats.get("expected_goal_involvements")),
+            expected_goals=_float(stats.get("expected_goals")),
+            expected_assists=_float(stats.get("expected_assists")),
+            expected_goal_involvements=_float(stats.get("expected_goal_involvements")),
             expected_goals_conceded=_float_str(stats.get("expected_goals_conceded")),
             total_points=int(stats.get("total_points", 0)),
             in_dreamteam=_bool_int(stats.get("in_dreamteam")),

@@ -113,9 +113,9 @@ CREATE TABLE IF NOT EXISTS players (
     threat                          TEXT,
     ict_index                       TEXT,
     starts                          INTEGER DEFAULT 0,
-    expected_goals                  TEXT,
-    expected_assists                TEXT,
-    expected_goal_involvements      TEXT,
+    expected_goals                  REAL,
+    expected_assists                REAL,
+    expected_goal_involvements      REAL,
     expected_goals_conceded         TEXT,
     xgp                             REAL,
     xap                             REAL,
@@ -158,9 +158,9 @@ CREATE TABLE IF NOT EXISTS player_history (
     threat                          TEXT,
     ict_index                       TEXT,
     starts                          INTEGER DEFAULT 0,
-    expected_goals                  TEXT,
-    expected_assists                TEXT,
-    expected_goal_involvements      TEXT,
+    expected_goals                  REAL,
+    expected_assists                REAL,
+    expected_goal_involvements      REAL,
     expected_goals_conceded         TEXT,
     xgp                             REAL,
     xap                             REAL,
@@ -205,9 +205,9 @@ CREATE TABLE IF NOT EXISTS player_history_past (
     threat                          TEXT,
     ict_index                       TEXT,
     starts                          INTEGER DEFAULT 0,
-    expected_goals                  TEXT,
-    expected_assists                TEXT,
-    expected_goal_involvements      TEXT,
+    expected_goals                  REAL,
+    expected_assists                REAL,
+    expected_goal_involvements      REAL,
     expected_goals_conceded         TEXT,
     scraped_at                      TEXT NOT NULL,
     UNIQUE(player_fpl_id, season_name)
@@ -263,9 +263,9 @@ CREATE TABLE IF NOT EXISTS live_gameweek_stats (
     threat                          TEXT,
     ict_index                       TEXT,
     starts                          INTEGER DEFAULT 0,
-    expected_goals                  TEXT,
-    expected_assists                TEXT,
-    expected_goal_involvements      TEXT,
+    expected_goals                  REAL,
+    expected_assists                REAL,
+    expected_goal_involvements      REAL,
     expected_goals_conceded         TEXT,
     total_points                    INTEGER DEFAULT 0,
     in_dreamteam                    INTEGER DEFAULT 0,
@@ -341,6 +341,78 @@ class FPLDatabase:
             except Exception:
                 pass  # column already exists — safe to ignore
 
+        # Change expected_goals/assists/goal_involvements from TEXT to REAL affinity.
+        # SQLite has no ALTER COLUMN TYPE; the only way to change column affinity is
+        # to rebuild the table (RENAME old → CREATE new → INSERT data → DROP old).
+        self._rebuild_xg_column_types()
+
+    def _rebuild_xg_column_types(self) -> None:
+        """
+        Rebuild the four stat tables so that expected_goals, expected_assists,
+        and expected_goal_involvements have REAL affinity.
+
+        SQLite does not support ALTER COLUMN TYPE; the standard workaround is:
+          1. Rename the old table to <table>_old
+          2. Create the new table from the current schema (already REAL)
+          3. Copy all rows from the old table
+          4. Drop the old table
+
+        The check against PRAGMA table_info makes this idempotent — it only
+        runs for tables where the column is still declared TEXT.
+        """
+        import re
+
+        tables = [
+            "players",
+            "player_history",
+            "player_history_past",
+            "live_gameweek_stats",
+        ]
+        # Indexes to (re-)create after the rebuild
+        index_pattern = re.compile(
+            r"CREATE INDEX IF NOT EXISTS \w+ ON "
+            r"(?:players|player_history|player_history_past|live_gameweek_stats)"
+            r"\(\w+(?:,\s*\w+)*\);",
+        )
+        indexes_sql = "\n".join(index_pattern.findall(_SCHEMA_SQL))
+
+        for table in tables:
+            pragma = self._conn.execute(
+                f"PRAGMA table_info({table})"
+            ).fetchall()
+            col_types = {row[1]: row[2].upper() for row in pragma}
+            if col_types.get("expected_goals", "REAL") != "TEXT":
+                continue  # already REAL — nothing to do
+
+            # Extract the CREATE TABLE block from the current schema definition.
+            match = re.search(
+                rf"(CREATE TABLE IF NOT EXISTS {table}\s*\([^;]+;)",
+                _SCHEMA_SQL,
+                re.DOTALL,
+            )
+            if not match:
+                logger.warning("Schema block for %s not found; skipping rebuild", table)
+                continue
+
+            # Build CREATE TABLE for the temporary name, then rename back.
+            create_new = match.group(1).replace(
+                f"CREATE TABLE IF NOT EXISTS {table}",
+                f"CREATE TABLE {table}_rebuilt",
+            )
+
+            logger.info("Rebuilding %s to change expected_goals/assists/xgi to REAL...", table)
+            self._conn.executescript(f"""
+                ALTER TABLE {table} RENAME TO {table}_old;
+                {create_new}
+                INSERT INTO {table}_rebuilt SELECT * FROM {table}_old;
+                DROP TABLE {table}_old;
+                ALTER TABLE {table}_rebuilt RENAME TO {table};
+                {indexes_sql}
+            """)
+            logger.info("Rebuilt %s — column types updated to REAL", table)
+
+        self._conn.commit()
+
     def backfill_xg_performance(self) -> None:
         """
         Compute xgp/xap/xgip for every row in players and player_history
@@ -350,22 +422,18 @@ class FPLDatabase:
         self._conn.executescript("""
         UPDATE players
         SET
-            xgp  = ROUND(goals_scored  - CAST(expected_goals   AS REAL), 2),
-            xap  = ROUND(assists       - CAST(expected_assists  AS REAL), 2),
-            xgip = ROUND(
-                       (goals_scored  - CAST(expected_goals   AS REAL)) +
-                       (assists       - CAST(expected_assists  AS REAL)), 2)
+            xgp  = ROUND(goals_scored - expected_goals,  2),
+            xap  = ROUND(assists      - expected_assists, 2),
+            xgip = ROUND((goals_scored - expected_goals) + (assists - expected_assists), 2)
         WHERE expected_goals IS NOT NULL
           AND expected_assists IS NOT NULL
           AND xgp IS NULL;
 
         UPDATE player_history
         SET
-            xgp  = ROUND(goals_scored  - CAST(expected_goals   AS REAL), 2),
-            xap  = ROUND(assists       - CAST(expected_assists  AS REAL), 2),
-            xgip = ROUND(
-                       (goals_scored  - CAST(expected_goals   AS REAL)) +
-                       (assists       - CAST(expected_assists  AS REAL)), 2)
+            xgp  = ROUND(goals_scored - expected_goals,  2),
+            xap  = ROUND(assists      - expected_assists, 2),
+            xgip = ROUND((goals_scored - expected_goals) + (assists - expected_assists), 2)
         WHERE expected_goals IS NOT NULL
           AND expected_assists IS NOT NULL
           AND xgp IS NULL;

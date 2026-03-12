@@ -177,8 +177,8 @@
             <td class="text-right stat-num">{{ row.clean_sheets or 0 }}</td>
             <td class="text-right stat-num">{{ row.bonus or 0 }}</td>
             <td class="text-right stat-num" style="color:#64748b;">{{ row.bps or 0 }}</td>
-            <td class="text-right stat-num text-xs" style="color:#64748b;">{{ row.expected_goals or '—' }}</td>
-            <td class="text-right stat-num text-xs" style="color:#64748b;">{{ row.expected_assists or '—' }}</td>
+            <td class="text-right stat-num text-xs" style="color:#64748b;">{{ '%.2f'|format(row.expected_goals) if row.expected_goals is not none else '—' }}</td>
+            <td class="text-right stat-num text-xs" style="color:#64748b;">{{ '%.2f'|format(row.expected_assists) if row.expected_assists is not none else '—' }}</td>
             <td class="text-right stat-num text-xs" style="color:{% if row.xgp is not none and row.xgp > 0 %}#00ff87{% elif row.xgp is not none and row.xgp < 0 %}#f87171{% else %}#64748b{% endif %};">
               {{ '%.2f'|format(row.xgp) if row.xgp is not none else '—' }}
             </td>
