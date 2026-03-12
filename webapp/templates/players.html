@@ -72,20 +72,30 @@
   <!-- Filters -->
   <div class="card p-4 mb-6">
     <form method="get" class="flex flex-wrap gap-3 items-end" onsubmit="cleanFormInputs(this)">
+
+      {# ── Shared hidden inputs ────────────────────────────────────────────────
+         These carry all current filter state so that clicking any one filter
+         chip/select preserves the others.  Each control that "owns" a field
+         calls clearHidden(form, name) via onclick/onchange BEFORE submitting,
+         so its own value wins and the hidden input is not double-sent. #}
+      {% if filter_pos is not none %}<input type="hidden" name="pos" value="{{ filter_pos }}" />{% endif %}
+      {% if filter_team is not none %}<input type="hidden" name="team" value="{{ filter_team }}" />{% endif %}
+      {% if filter_status %}<input type="hidden" name="status" value="{{ filter_status }}" />{% endif %}
+      <input type="hidden" name="sort" value="{{ filter_sort or 'total_points' }}" />
+      <input type="hidden" name="order" value="{{ filter_order or 'desc' }}" />
+
       <!-- Position -->
       <div>
         <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Position</p>
         <div class="flex gap-2">
           {% for pos_val, pos_label in [(None,'All'),(1,'GK'),(2,'DEF'),(3,'MID'),(4,'FWD')] %}
-          <button type="submit" {% if pos_val is not none %}name="pos" value="{{ pos_val }}"{% endif %}
+          <button type="submit"
+                  {% if pos_val is not none %}name="pos" value="{{ pos_val }}"{% endif %}
+                  onclick="clearHidden(this.form,'pos')"
                   class="filter-chip {% if filter_pos == pos_val or (filter_pos is none and pos_val is none) %}active{% endif %}">
             {{ pos_label }}
           </button>
           {% endfor %}
-          {% if filter_team is not none %}<input type="hidden" name="team" value="{{ filter_team }}" />{% endif %}
-          {% if filter_status %}<input type="hidden" name="status" value="{{ filter_status }}" />{% endif %}
-          <input type="hidden" name="sort" value="{{ filter_sort or 'total_points' }}" />
-          <input type="hidden" name="order" value="{{ filter_order or 'desc' }}" />
         </div>
       </div>
 
@@ -94,7 +104,9 @@
         <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Status</p>
         <div class="flex gap-2">
           {% for stat_val, stat_label in [(None,'All'),('available','Available'),('doubt','Doubt'),('injured','Injured')] %}
-          <button type="submit" {% if stat_val %}name="status" value="{{ stat_val }}"{% endif %}
+          <button type="submit"
+                  {% if stat_val %}name="status" value="{{ stat_val }}"{% endif %}
+                  onclick="clearHidden(this.form,'status')"
                   class="filter-chip {% if filter_status == stat_val or (filter_status is none and stat_val is none) %}active{% endif %}">
             {{ stat_label }}
           </button>
@@ -105,7 +117,7 @@
       <!-- Team -->
       <div>
         <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Team</p>
-        <select name="team" onchange="cleanAndSubmit(this.form)"
+        <select name="team" onchange="clearHidden(this.form,'team'); cleanAndSubmit(this.form)"
                 class="text-sm rounded-lg px-3 py-2 border focus:outline-none"
                 style="background:#0a0e1a; border-color:#1e2d4a; color:#e2e8f0;">
           <option value="">All teams</option>
@@ -476,6 +488,18 @@ function toggleSortOrder() {
  * Used as an onsubmit handler (returns undefined → browser proceeds with
  * the now-cleaned form submission).
  */
+/**
+ * Disable all hidden inputs with the given name so they are not serialised
+ * into the GET query string.  Called via onclick/onchange on each filter
+ * control before it submits its own value, preventing the hidden "preserve
+ * state" input from conflicting with (or overriding) the control's value.
+ */
+function clearHidden(form, name) {
+  Array.from(form.elements).forEach(function(el) {
+    if (el.type === 'hidden' && el.name === name) el.disabled = true;
+  });
+}
+
 function cleanFormInputs(form) {
   Array.from(form.elements).forEach(function(el) {
     if (el.name && el.value === '') el.disabled = true;
