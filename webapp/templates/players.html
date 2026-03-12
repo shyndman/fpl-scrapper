@@ -7,8 +7,14 @@
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
     <div>
       <h1 class="text-3xl font-bold"><span class="gradient-text">Players</span></h1>
-      <p class="text-sm mt-1" style="color:#64748b;">
+      <p class="text-sm mt-1 flex items-center gap-2 flex-wrap" style="color:#64748b;">
         {{ total }} player{% if total != 1 %}s{% endif %} found
+        {% if filter_gw_start is not none or filter_gw_end is not none %}
+        <span class="inline-flex items-center text-xs px-2 py-0.5 rounded-full"
+              style="background:rgba(56,189,248,0.1); color:#38bdf8; border:1px solid rgba(56,189,248,0.3);">
+          GW {{ filter_gw_start or 1 }} – {% if filter_gw_end %}GW {{ filter_gw_end }}{% else %}latest{% endif %}
+        </span>
+        {% endif %}
       </p>
     </div>
     <!-- View toggle + Sort -->
@@ -39,6 +45,8 @@
         {% if filter_status %}<input type="hidden" name="status" value="{{ filter_status }}" />{% endif %}
         {% if filter_min_cost is not none %}<input type="hidden" name="min_cost" value="{{ filter_min_cost }}" />{% endif %}
         {% if filter_max_cost is not none %}<input type="hidden" name="max_cost" value="{{ filter_max_cost }}" />{% endif %}
+        {% if filter_gw_start is not none %}<input type="hidden" name="gw_start" value="{{ filter_gw_start }}" />{% endif %}
+        {% if filter_gw_end is not none %}<input type="hidden" name="gw_end" value="{{ filter_gw_end }}" />{% endif %}
         <input type="hidden" name="order" value="{{ filter_order or 'desc' }}" />
         <select name="sort" onchange="cleanAndSubmit(this.form)"
                 class="text-sm rounded-lg px-3 py-2 border focus:outline-none"
@@ -82,6 +90,8 @@
       {% if filter_pos is not none %}<input type="hidden" name="pos" value="{{ filter_pos }}" />{% endif %}
       {% if filter_team is not none %}<input type="hidden" name="team" value="{{ filter_team }}" />{% endif %}
       {% if filter_status %}<input type="hidden" name="status" value="{{ filter_status }}" />{% endif %}
+      {% if filter_gw_start is not none %}<input type="hidden" name="gw_start" value="{{ filter_gw_start }}" />{% endif %}
+      {% if filter_gw_end is not none %}<input type="hidden" name="gw_end" value="{{ filter_gw_end }}" />{% endif %}
       <input type="hidden" name="sort" value="{{ filter_sort or 'total_points' }}" />
       <input type="hidden" name="order" value="{{ filter_order or 'desc' }}" />
 
@@ -147,6 +157,34 @@
                   style="background:rgba(0,255,135,0.1); color:#00ff87; border:1px solid rgba(0,255,135,0.3);">
             Apply
           </button>
+        </div>
+      </div>
+
+      <!-- Gameweek range -->
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Gameweek Range</p>
+        <div class="flex gap-2 items-center">
+          <select name="gw_start" onchange="clearHidden(this.form,'gw_start'); cleanAndSubmit(this.form)"
+                  class="text-sm rounded-lg px-3 py-2 border focus:outline-none"
+                  style="background:#0a0e1a; border-color:#1e2d4a; color:#e2e8f0;">
+            <option value="">From GW 1</option>
+            {% for gw in gameweeks %}
+            <option value="{{ gw.fpl_id }}" {% if filter_gw_start == gw.fpl_id %}selected{% endif %}>
+              GW {{ gw.fpl_id }}
+            </option>
+            {% endfor %}
+          </select>
+          <span style="color:#64748b;">–</span>
+          <select name="gw_end" onchange="clearHidden(this.form,'gw_end'); cleanAndSubmit(this.form)"
+                  class="text-sm rounded-lg px-3 py-2 border focus:outline-none"
+                  style="background:#0a0e1a; border-color:#1e2d4a; color:#e2e8f0;">
+            <option value="">To latest</option>
+            {% for gw in gameweeks %}
+            <option value="{{ gw.fpl_id }}" {% if filter_gw_end == gw.fpl_id %}selected{% endif %}>
+              GW {{ gw.fpl_id }}
+            </option>
+            {% endfor %}
+          </select>
         </div>
       </div>
 

@@ -161,12 +161,19 @@ def get_players(
     status: str | None = None,
     min_cost: int | None = None,
     max_cost: int | None = None,
+    gw_start: int | None = None,
+    gw_end: int | None = None,
     sort: str = "total_points",
     order: str = "desc",
     page: int = 1,
     per_page: int = 40,
 ) -> tuple[list[dict], int]:
-    """Return (players, total_count). Prices in tenths (e.g. 130 = £13.0m)."""
+    """Return (players, total_count). Prices in tenths (e.g. 130 = £13.0m).
+
+    When gw_start or gw_end is provided the stats columns (goals, assists, etc.)
+    are aggregated from player_history for that GW range instead of using the
+    season totals stored in the players table.
+    """
     valid_sorts = {
         # Integer columns — sort as-is
         "total_points", "now_cost", "goals_scored", "assists", "minutes",
@@ -181,18 +188,27 @@ def get_players(
         # Text sort (alphabetic)
         "web_name",
     }
-    # TEXT columns that store numeric values: must CAST to REAL so that e.g.
-    # "12.4" sorts after "9.5" rather than before it (lexicographic pitfall).
+    # TEXT columns in `players` that store numeric values.
     _text_numeric = {
         "form", "selected_by_percent", "points_per_game",
         "influence", "creativity", "threat", "ict_index",
         "expected_goals", "expected_assists",
         "expected_goal_involvements", "expected_goals_conceded",
     }
+    # Columns that are aggregated from player_history when GW range is active.
+    # In the CTE these are already proper numbers so no CAST is needed for sort.
+    _gw_agg_cols = {
+        "total_points", "goals_scored", "assists", "clean_sheets",
+        "goals_conceded", "minutes", "bonus", "bps", "transfers_in",
+        "expected_goals", "expected_assists",
+        "expected_goal_involvements", "expected_goals_conceded",
+        "xgp", "xap", "xgip",
+    }
+
     if sort not in valid_sorts:
         sort = "total_points"
     order_dir = "DESC" if order.lower() == "desc" else "ASC"
-    sort_expr = f"CAST(p.{sort} AS REAL)" if sort in _text_numeric else f"p.{sort}"
+    use_gw_range = gw_start is not None or gw_end is not None
 
     conditions: list[str] = []
     params: list[Any] = []
@@ -218,26 +234,120 @@ def get_players(
         params.append(max_cost)
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
-
-    count_sql = f"""
-        SELECT COUNT(*) FROM players p
-        JOIN teams t ON t.fpl_id = p.team_fpl_id
-        {where}
-    """
-    db = get_db()
-    total = db.execute(count_sql, params).fetchone()[0]
-
+    db_conn = get_db()
     offset = (page - 1) * per_page
-    data_sql = f"""
-        SELECT p.*, t.name AS team_name, t.short_name AS team_short_name
-        FROM players p
-        JOIN teams t ON t.fpl_id = p.team_fpl_id
-        {where}
-        ORDER BY {sort_expr} {order_dir}
-        LIMIT ? OFFSET ?
-    """
-    cur = db.execute(data_sql, params + [per_page, offset])
-    return rows_to_dicts(cur.fetchall()), total
+
+    if use_gw_range:
+        # ── Resolve effective GW bounds ──────────────────────────────────────
+        gw_start_eff = gw_start if gw_start is not None else 1
+        if gw_end is not None:
+            gw_end_eff = gw_end
+        else:
+            row = db_conn.execute("SELECT MAX(fpl_id) FROM gameweeks").fetchone()
+            gw_end_eff = row[0] if row and row[0] else 38
+
+        cte_params: list[Any] = [gw_start_eff, gw_end_eff]
+
+        # Sort expression: aggregated cols → bare alias (already numeric);
+        # text-numeric p.* cols → CAST; everything else → p. prefix.
+        if sort in _gw_agg_cols:
+            sort_expr = sort
+        elif sort in _text_numeric:
+            sort_expr = f"CAST(p.{sort} AS REAL)"
+        else:
+            sort_expr = f"p.{sort}"
+
+        cte = """
+        WITH gw_stats AS (
+            SELECT
+                player_fpl_id,
+                COALESCE(SUM(total_points),                                            0) AS total_points,
+                COALESCE(SUM(goals_scored),                                            0) AS goals_scored,
+                COALESCE(SUM(assists),                                                 0) AS assists,
+                COALESCE(SUM(clean_sheets),                                            0) AS clean_sheets,
+                COALESCE(SUM(goals_conceded),                                          0) AS goals_conceded,
+                COALESCE(SUM(minutes),                                                 0) AS minutes,
+                COALESCE(SUM(bonus),                                                   0) AS bonus,
+                COALESCE(SUM(bps),                                                     0) AS bps,
+                COALESCE(SUM(transfers_in),                                            0) AS transfers_in,
+                ROUND(COALESCE(SUM(CAST(expected_goals              AS REAL)), 0), 2)    AS expected_goals,
+                ROUND(COALESCE(SUM(CAST(expected_assists            AS REAL)), 0), 2)    AS expected_assists,
+                ROUND(COALESCE(SUM(CAST(expected_goal_involvements  AS REAL)), 0), 2)    AS expected_goal_involvements,
+                ROUND(COALESCE(SUM(CAST(expected_goals_conceded     AS REAL)), 0), 2)    AS expected_goals_conceded,
+                ROUND(COALESCE(SUM(xgp),                               0), 2)            AS xgp,
+                ROUND(COALESCE(SUM(xap),                               0), 2)            AS xap,
+                ROUND(COALESCE(SUM(xgip),                              0), 2)            AS xgip
+            FROM player_history
+            WHERE gameweek_fpl_id BETWEEN ? AND ?
+            GROUP BY player_fpl_id
+        )
+        """
+
+        count_sql = f"""
+            {cte}
+            SELECT COUNT(*) FROM players p
+            JOIN teams t ON t.fpl_id = p.team_fpl_id
+            LEFT JOIN gw_stats gs ON gs.player_fpl_id = p.fpl_id
+            {where}
+        """
+        data_sql = f"""
+            {cte}
+            SELECT
+                p.fpl_id, p.web_name, p.first_name, p.second_name, p.code,
+                p.element_type, p.now_cost, p.status, p.news,
+                p.chance_of_playing_next_round, p.chance_of_playing_this_round,
+                p.team_fpl_id,
+                p.form, p.selected_by_percent, p.points_per_game,
+                p.influence, p.creativity, p.threat, p.ict_index,
+                t.name AS team_name, t.short_name AS team_short_name,
+                COALESCE(gs.total_points,               0)   AS total_points,
+                COALESCE(gs.goals_scored,               0)   AS goals_scored,
+                COALESCE(gs.assists,                    0)   AS assists,
+                COALESCE(gs.clean_sheets,               0)   AS clean_sheets,
+                COALESCE(gs.goals_conceded,             0)   AS goals_conceded,
+                COALESCE(gs.minutes,                    0)   AS minutes,
+                COALESCE(gs.bonus,                      0)   AS bonus,
+                COALESCE(gs.bps,                        0)   AS bps,
+                COALESCE(gs.transfers_in,               0)   AS transfers_in,
+                COALESCE(gs.expected_goals,             0)   AS expected_goals,
+                COALESCE(gs.expected_assists,           0)   AS expected_assists,
+                COALESCE(gs.expected_goal_involvements, 0)   AS expected_goal_involvements,
+                COALESCE(gs.expected_goals_conceded,    0)   AS expected_goals_conceded,
+                COALESCE(gs.xgp,                        0)   AS xgp,
+                COALESCE(gs.xap,                        0)   AS xap,
+                COALESCE(gs.xgip,                       0)   AS xgip
+            FROM players p
+            JOIN teams t ON t.fpl_id = p.team_fpl_id
+            LEFT JOIN gw_stats gs ON gs.player_fpl_id = p.fpl_id
+            {where}
+            ORDER BY {sort_expr} {order_dir}
+            LIMIT ? OFFSET ?
+        """
+        total = db_conn.execute(count_sql, cte_params + params).fetchone()[0]
+        cur = db_conn.execute(data_sql, cte_params + params + [per_page, offset])
+        return rows_to_dicts(cur.fetchall()), total
+
+    else:
+        # ── Season-totals query (no GW range) ───────────────────────────────
+        sort_expr = f"CAST(p.{sort} AS REAL)" if sort in _text_numeric else f"p.{sort}"
+
+        count_sql = f"""
+            SELECT COUNT(*) FROM players p
+            JOIN teams t ON t.fpl_id = p.team_fpl_id
+            {where}
+        """
+        total = db_conn.execute(count_sql, params).fetchone()[0]
+
+        data_sql = f"""
+            SELECT p.*, t.name AS team_name, t.short_name AS team_short_name
+            FROM players p
+            JOIN teams t ON t.fpl_id = p.team_fpl_id
+            {where}
+            ORDER BY {sort_expr} {order_dir}
+            LIMIT ? OFFSET ?
+        """
+        cur = db_conn.execute(data_sql, params + [per_page, offset])
+        return rows_to_dicts(cur.fetchall()), total
 
 
 @ttl_cache(seconds=60)

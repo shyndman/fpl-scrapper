@@ -49,6 +49,8 @@ async def players(
     status: str | None = None,
     min_cost: int | None = None,
     max_cost: int | None = None,
+    gw_start: int | None = None,
+    gw_end: int | None = None,
     sort: str = "total_points",
     order: str = "desc",
     page: int = 1,
@@ -60,12 +62,15 @@ async def players(
         status=status,
         min_cost=min_cost,
         max_cost=max_cost,
+        gw_start=gw_start,
+        gw_end=gw_end,
         sort=sort,
         order=order,
         page=page,
         per_page=per_page,
     )
     teams = db.get_all_teams()
+    gameweeks = db.get_all_gameweeks()
     total_pages = max(1, math.ceil(total / per_page))
 
     return _tmpl().TemplateResponse(
@@ -74,6 +79,7 @@ async def players(
             "request": request,
             "players": players_list,
             "teams": teams,
+            "gameweeks": gameweeks,
             "total": total,
             "page": page,
             "total_pages": total_pages,
@@ -84,6 +90,8 @@ async def players(
             "filter_status": status,
             "filter_min_cost": min_cost,
             "filter_max_cost": max_cost,
+            "filter_gw_start": gw_start,
+            "filter_gw_end": gw_end,
             "filter_sort": sort,
             "filter_order": order,
             "page_title": "Players",
