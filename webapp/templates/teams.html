@@ -68,6 +68,31 @@
         {% endfor %}
       </div>
 
+      <!-- xG / xA / xGI ─ expected stats (always non-negative) -->
+      <div class="w-full border-t pt-2" style="border-color:#1e2d4a;">
+        <div class="grid grid-cols-3 text-xs text-center gap-1 mb-2">
+          {% for label, val in [('xG', team.team_xg), ('xA', team.team_xa), ('xGI', team.team_xgi)] %}
+          <div>
+            <p style="color:#64748b;">{{ label }}</p>
+            <p class="font-semibold stat-num" style="color:#e2e8f0;">{{ '%.1f'|format(val or 0) }}</p>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- xGP / xAP / xGIP ─ performance vs expected (green +, red -) -->
+        <div class="grid grid-cols-3 text-xs text-center gap-1">
+          {% for label, val in [('xGP', team.team_xgp), ('xAP', team.team_xap), ('xGIP', team.team_xgip)] %}
+          {% set color = '#00ff87' if val and val > 0 else ('#f87171' if val and val < 0 else '#64748b') %}
+          <div>
+            <p style="color:#64748b;">{{ label }}</p>
+            <p class="font-semibold stat-num" style="color:{{ color }};">
+              {{ '%+.1f'|format(val or 0) }}
+            </p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
     </a>
     {% endfor %}
   </div>

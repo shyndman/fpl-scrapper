@@ -127,7 +127,11 @@ def get_team(fpl_id: int) -> dict | None:
 
 @ttl_cache(seconds=300)
 def get_teams_with_stats() -> list[dict]:
-    """Teams enriched with win/draw/loss counts and top scorer this season."""
+    """Teams enriched with win/draw/loss counts and squad xG/xA/xGI/xGP/xAP/xGIP totals.
+
+    The xG metrics are computed live from the players table so they automatically
+    reflect any player additions, removals, or stat updates without any extra sync.
+    """
     sql = """
     SELECT
         t.*,
@@ -142,10 +146,28 @@ def get_teams_with_stats() -> list[dict]:
         COUNT(CASE WHEN
             (f.team_h_fpl_id = t.fpl_id AND f.team_h_score < f.team_a_score) OR
             (f.team_a_fpl_id = t.fpl_id AND f.team_a_score < f.team_h_score)
-            THEN 1 END) AS losses
+            THEN 1 END) AS losses,
+        xg.team_xg,
+        xg.team_xa,
+        xg.team_xgi,
+        xg.team_xgp,
+        xg.team_xap,
+        xg.team_xgip
     FROM teams t
     LEFT JOIN fixtures f ON f.finished = 1 AND
         (f.team_h_fpl_id = t.fpl_id OR f.team_a_fpl_id = t.fpl_id)
+    LEFT JOIN (
+        SELECT
+            team_fpl_id,
+            ROUND(COALESCE(SUM(CAST(expected_goals             AS REAL)), 0), 2) AS team_xg,
+            ROUND(COALESCE(SUM(CAST(expected_assists           AS REAL)), 0), 2) AS team_xa,
+            ROUND(COALESCE(SUM(CAST(expected_goal_involvements AS REAL)), 0), 2) AS team_xgi,
+            ROUND(COALESCE(SUM(xgp),  0), 2)                                     AS team_xgp,
+            ROUND(COALESCE(SUM(xap),  0), 2)                                     AS team_xap,
+            ROUND(COALESCE(SUM(xgip), 0), 2)                                     AS team_xgip
+        FROM players
+        GROUP BY team_fpl_id
+    ) xg ON xg.team_fpl_id = t.fpl_id
     GROUP BY t.fpl_id
     ORDER BY t.name ASC
     """
