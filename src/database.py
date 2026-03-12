@@ -116,6 +116,9 @@ CREATE TABLE IF NOT EXISTS players (
     expected_assists                TEXT,
     expected_goal_involvements      TEXT,
     expected_goals_conceded         TEXT,
+    xgp                             REAL,
+    xap                             REAL,
+    xgip                            REAL,
     news                            TEXT,
     news_added                      TEXT,
     squad_number                    INTEGER,
@@ -158,6 +161,9 @@ CREATE TABLE IF NOT EXISTS player_history (
     expected_assists                TEXT,
     expected_goal_involvements      TEXT,
     expected_goals_conceded         TEXT,
+    xgp                             REAL,
+    xap                             REAL,
+    xgip                            REAL,
     value                           INTEGER,
     transfers_balance               INTEGER,
     selected                        INTEGER,
@@ -312,7 +318,59 @@ class FPLDatabase:
         """Create all tables and indexes if they don't already exist."""
         self._conn.executescript(_SCHEMA_SQL)
         self._conn.commit()
+        self.migrate_schema()
         logger.info("Database schema initialised at %s", self._db_path)
+
+    def migrate_schema(self) -> None:
+        """Idempotently add columns introduced after the initial schema."""
+        new_columns = [
+            ("players",        "xgp  REAL"),
+            ("players",        "xap  REAL"),
+            ("players",        "xgip REAL"),
+            ("player_history", "xgp  REAL"),
+            ("player_history", "xap  REAL"),
+            ("player_history", "xgip REAL"),
+        ]
+        for table, col_def in new_columns:
+            col_name = col_def.split()[0]
+            try:
+                self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {col_def}")
+                self._conn.commit()
+                logger.info("Migration: added %s.%s", table, col_name)
+            except Exception:
+                pass  # column already exists — safe to ignore
+
+    def backfill_xg_performance(self) -> None:
+        """
+        Compute xgp/xap/xgip for every row in players and player_history
+        that has expected_goals / expected_assists but no xgp yet.
+        Safe to run multiple times (only touches NULL rows).
+        """
+        self._conn.executescript("""
+        UPDATE players
+        SET
+            xgp  = ROUND(goals_scored  - CAST(expected_goals   AS REAL), 2),
+            xap  = ROUND(assists       - CAST(expected_assists  AS REAL), 2),
+            xgip = ROUND(
+                       (goals_scored  - CAST(expected_goals   AS REAL)) +
+                       (assists       - CAST(expected_assists  AS REAL)), 2)
+        WHERE expected_goals IS NOT NULL
+          AND expected_assists IS NOT NULL
+          AND xgp IS NULL;
+
+        UPDATE player_history
+        SET
+            xgp  = ROUND(goals_scored  - CAST(expected_goals   AS REAL), 2),
+            xap  = ROUND(assists       - CAST(expected_assists  AS REAL), 2),
+            xgip = ROUND(
+                       (goals_scored  - CAST(expected_goals   AS REAL)) +
+                       (assists       - CAST(expected_assists  AS REAL)), 2)
+        WHERE expected_goals IS NOT NULL
+          AND expected_assists IS NOT NULL
+          AND xgp IS NULL;
+        """)
+        self._conn.commit()
+        logger.info("Backfilled xgp/xap/xgip for players and player_history")
 
     # ------------------------------------------------------------------
     # Upsert helpers
@@ -359,10 +417,10 @@ class FPLDatabase:
              penalties_saved, penalties_missed, yellow_cards, red_cards, saves,
              bonus, bps, influence, creativity, threat, ict_index, starts,
              expected_goals, expected_assists, expected_goal_involvements,
-             expected_goals_conceded, news, news_added, squad_number, photo,
-             scraped_at)
+             expected_goals_conceded, xgp, xap, xgip,
+             news, news_added, squad_number, photo, scraped_at)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-                ?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """
         with self._conn:
             self._conn.executemany(sql, [p.to_db_tuple() for p in players])
@@ -378,9 +436,10 @@ class FPLDatabase:
              yellow_cards, red_cards, saves, bonus, bps,
              influence, creativity, threat, ict_index, starts,
              expected_goals, expected_assists, expected_goal_involvements,
-             expected_goals_conceded, value, transfers_balance, selected,
+             expected_goals_conceded, xgp, xap, xgip,
+             value, transfers_balance, selected,
              transfers_in, transfers_out, round, scraped_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """
         with self._conn:
             self._conn.executemany(sql, [r.to_db_tuple() for r in rows])

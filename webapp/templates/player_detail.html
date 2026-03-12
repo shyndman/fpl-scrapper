@@ -152,6 +152,9 @@
             <th class="text-right">BPS</th>
             <th class="text-right">xG</th>
             <th class="text-right">xA</th>
+            <th class="text-right" title="Goals − xG (over/underperformance)">xGP</th>
+            <th class="text-right" title="Assists − xA (over/underperformance)">xAP</th>
+            <th class="text-right" title="xGP + xAP (total involvement over/underperformance)">xGIP</th>
             <th class="text-right">Value</th>
           </tr>
         </thead>
@@ -176,6 +179,15 @@
             <td class="text-right stat-num" style="color:#64748b;">{{ row.bps or 0 }}</td>
             <td class="text-right stat-num text-xs" style="color:#64748b;">{{ row.expected_goals or '—' }}</td>
             <td class="text-right stat-num text-xs" style="color:#64748b;">{{ row.expected_assists or '—' }}</td>
+            <td class="text-right stat-num text-xs" style="color:{% if row.xgp is not none and row.xgp > 0 %}#00ff87{% elif row.xgp is not none and row.xgp < 0 %}#f87171{% else %}#64748b{% endif %};">
+              {{ '%.2f'|format(row.xgp) if row.xgp is not none else '—' }}
+            </td>
+            <td class="text-right stat-num text-xs" style="color:{% if row.xap is not none and row.xap > 0 %}#00ff87{% elif row.xap is not none and row.xap < 0 %}#f87171{% else %}#64748b{% endif %};">
+              {{ '%.2f'|format(row.xap) if row.xap is not none else '—' }}
+            </td>
+            <td class="text-right stat-num text-xs" style="color:{% if row.xgip is not none and row.xgip > 0 %}#00ff87{% elif row.xgip is not none and row.xgip < 0 %}#f87171{% else %}#64748b{% endif %};">
+              {{ '%.2f'|format(row.xgip) if row.xgip is not none else '—' }}
+            </td>
             <td class="text-right stat-num text-xs" style="color:#64748b;">
               {{ '£%.1fm' | format(row.value / 10) if row.value else '—' }}
             </td>

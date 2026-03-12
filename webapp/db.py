@@ -171,6 +171,8 @@ def get_players(
         # Integer columns — sort as-is
         "total_points", "now_cost", "goals_scored", "assists", "minutes",
         "transfers_in", "bonus", "clean_sheets", "goals_conceded", "bps",
+        # REAL columns — sort as-is (no CAST needed)
+        "xgp", "xap", "xgip",
         # Text columns with numeric values — need CAST AS REAL for correct ordering
         "form", "selected_by_percent", "points_per_game",
         "influence", "creativity", "threat", "ict_index",

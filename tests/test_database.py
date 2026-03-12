@@ -121,6 +121,7 @@ class TestUpsertPlayers:
             expected_goals=p.expected_goals, expected_assists=p.expected_assists,
             expected_goal_involvements=p.expected_goal_involvements,
             expected_goals_conceded=p.expected_goals_conceded,
+            xgp=p.xgp, xap=p.xap, xgip=p.xgip,
             news=p.news, news_added=p.news_added, squad_number=p.squad_number,
             photo=p.photo,
         )

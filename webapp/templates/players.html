@@ -53,6 +53,7 @@
             ('threat','Threat'),          ('ict_index','ICT Index'),
             ('expected_goals','xG'),      ('expected_assists','xA'),
             ('expected_goal_involvements','xGI'),('expected_goals_conceded','xGC'),
+            ('xgp','xGP'),               ('xap','xAP'),            ('xgip','xGIP'),
           ] %}
           {% for val, label in sort_opts %}
           <option value="{{ val }}" {% if filter_sort == val %}selected{% endif %}>{{ label }}</option>
@@ -164,6 +165,7 @@
     'threat': 'Threat',           'ict_index': 'ICT',
     'expected_goals': 'xG',       'expected_assists': 'xA',
     'expected_goal_involvements': 'xGI', 'expected_goals_conceded': 'xGC',
+    'xgp': 'xGP',                 'xap': 'xAP',              'xgip': 'xGIP',
     'web_name': 'Name',
   } %}
   {% set _sort_sfx = {'total_points': ' pts', 'selected_by_percent': '%'} %}
@@ -232,6 +234,12 @@
           <span>xA <strong style="color:#e2e8f0;">{{ p.expected_assists or '0.00' }}</strong></span>
           <span>ICT <strong style="color:#e2e8f0;">{{ p.ict_index or '0.0' }}</strong></span>
         </div>
+        <!-- Mini stats row 3: xGP / xAP / xGIP -->
+        <div class="flex justify-between text-xs" style="color:#64748b;">
+          <span>xGP <strong style="color:{{ '#00ff87' if p.xgp and p.xgp > 0 else ('#f87171' if p.xgp and p.xgp < 0 else '#e2e8f0') }};">{{ '%.2f'|format(p.xgp) if p.xgp is not none else '—' }}</strong></span>
+          <span>xAP <strong style="color:{{ '#00ff87' if p.xap and p.xap > 0 else ('#f87171' if p.xap and p.xap < 0 else '#e2e8f0') }};">{{ '%.2f'|format(p.xap) if p.xap is not none else '—' }}</strong></span>
+          <span>xGIP <strong style="color:{{ '#00ff87' if p.xgip and p.xgip > 0 else ('#f87171' if p.xgip and p.xgip < 0 else '#e2e8f0') }};">{{ '%.2f'|format(p.xgip) if p.xgip is not none else '—' }}</strong></span>
+        </div>
 
         <!-- Form + Ownership -->
         <div class="flex justify-between text-xs" style="color:#64748b;">
@@ -276,6 +284,9 @@
             ('expected_assists',           'xA',    'Expected Assists'),
             ('expected_goal_involvements', 'xGI',   'Expected Goal Involvements'),
             ('expected_goals_conceded',    'xGC',   'Expected Goals Conceded'),
+            ('xgp',                        'xGP',   'Goals vs Expected (Goals - xG)'),
+            ('xap',                        'xAP',   'Assists vs Expected (Assists - xA)'),
+            ('xgip',                       'xGIP',  'Goal Involvements vs Expected (xGP + xAP)'),
             ('influence',                  'Inf',   'Influence'),
             ('creativity',                 'Crt',   'Creativity'),
             ('threat',                     'Thr',   'Threat'),
@@ -376,6 +387,15 @@
           </td>
           <td class="text-right px-2" style="color:{{ _h if fs == 'expected_goals_conceded' else _t }};">
             {{ p.expected_goals_conceded or '0.00' }}
+          </td>
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'xgp' else ('#00ff87' if p.xgp and p.xgp > 0 else ('#f87171' if p.xgp and p.xgp < 0 else _t)) }};">
+            {{ '%.2f'|format(p.xgp) if p.xgp is not none else '—' }}
+          </td>
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'xap' else ('#00ff87' if p.xap and p.xap > 0 else ('#f87171' if p.xap and p.xap < 0 else _t)) }};">
+            {{ '%.2f'|format(p.xap) if p.xap is not none else '—' }}
+          </td>
+          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'xgip' else ('#00ff87' if p.xgip and p.xgip > 0 else ('#f87171' if p.xgip and p.xgip < 0 else _t)) }};">
+            {{ '%.2f'|format(p.xgip) if p.xgip is not none else '—' }}
           </td>
           <td class="text-right px-2" style="color:{{ _h if fs == 'influence' else _t }};">
             {{ p.influence or '0.0' }}

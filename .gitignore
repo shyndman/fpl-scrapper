@@ -2,6 +2,9 @@
 .env
 data/.session.json
 
+# Claude config files
+.claude/
+
 # Runtime data
 data/
 logs/

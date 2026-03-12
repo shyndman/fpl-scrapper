@@ -39,6 +39,20 @@ def _bool_int(v: Any) -> int:
     return 1 if v else 0
 
 
+def _xp(actual: int, expected: str | None) -> float | None:
+    """
+    Calculate performance vs expectation (actual minus expected).
+    Returns None when expected is unavailable.  Result is rounded to 2 d.p.
+    Positive → overperformed; negative → underperformed.
+    """
+    if expected is None:
+        return None
+    try:
+        return round(actual - float(expected), 2)
+    except (ValueError, TypeError):
+        return None
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -211,6 +225,9 @@ class Player:
     expected_assists: str | None
     expected_goal_involvements: str | None
     expected_goals_conceded: str | None
+    xgp: float | None   # goals_scored  - expected_goals
+    xap: float | None   # assists        - expected_assists
+    xgip: float | None  # xgp + xap
     news: str | None
     news_added: str | None
     squad_number: int | None
@@ -219,6 +236,9 @@ class Player:
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "Player":
+        xgp  = _xp(int(d.get("goals_scored", 0)), _float_str(d.get("expected_goals")))
+        xap  = _xp(int(d.get("assists",       0)), _float_str(d.get("expected_assists")))
+        xgip = round(xgp + xap, 2) if xgp is not None and xap is not None else None
         return cls(
             fpl_id=int(d["id"]),
             first_name=str(d.get("first_name", "")),
@@ -264,6 +284,7 @@ class Player:
             expected_assists=_float_str(d.get("expected_assists")),
             expected_goal_involvements=_float_str(d.get("expected_goal_involvements")),
             expected_goals_conceded=_float_str(d.get("expected_goals_conceded")),
+            xgp=xgp, xap=xap, xgip=xgip,
             news=_str(d.get("news")),
             news_added=_str(d.get("news_added")),
             squad_number=_int(d.get("squad_number")),
@@ -288,6 +309,7 @@ class Player:
             self.starts,
             self.expected_goals, self.expected_assists,
             self.expected_goal_involvements, self.expected_goals_conceded,
+            self.xgp, self.xap, self.xgip,
             self.news, self.news_added, self.squad_number, self.photo,
             self.scraped_at,
         )
@@ -327,6 +349,9 @@ class PlayerHistory:
     expected_assists: str | None
     expected_goal_involvements: str | None
     expected_goals_conceded: str | None
+    xgp: float | None
+    xap: float | None
+    xgip: float | None
     value: int | None
     transfers_balance: int | None
     selected: int | None
@@ -337,6 +362,9 @@ class PlayerHistory:
 
     @classmethod
     def from_dict(cls, player_fpl_id: int, d: dict[str, Any]) -> "PlayerHistory":
+        xgp  = _xp(int(d.get("goals_scored", 0)), _float_str(d.get("expected_goals")))
+        xap  = _xp(int(d.get("assists",       0)), _float_str(d.get("expected_assists")))
+        xgip = round(xgp + xap, 2) if xgp is not None and xap is not None else None
         return cls(
             player_fpl_id=player_fpl_id,
             gameweek_fpl_id=int(d["round"]),
@@ -366,6 +394,9 @@ class PlayerHistory:
             expected_assists=_float_str(d.get("expected_assists")),
             expected_goal_involvements=_float_str(d.get("expected_goal_involvements")),
             expected_goals_conceded=_float_str(d.get("expected_goals_conceded")),
+            xgp=xgp,
+            xap=xap,
+            xgip=xgip,
             value=_int(d.get("value")),
             transfers_balance=_int(d.get("transfers_balance")),
             selected=_int(d.get("selected")),
@@ -387,6 +418,7 @@ class PlayerHistory:
             self.starts,
             self.expected_goals, self.expected_assists,
             self.expected_goal_involvements, self.expected_goals_conceded,
+            self.xgp, self.xap, self.xgip,
             self.value, self.transfers_balance, self.selected,
             self.transfers_in, self.transfers_out, self.round,
             self.scraped_at,
