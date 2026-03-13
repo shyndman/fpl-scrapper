@@ -122,6 +122,11 @@ class TestUpsertPlayers:
             expected_goal_involvements=p.expected_goal_involvements,
             expected_goals_conceded=p.expected_goals_conceded,
             xgp=p.xgp, xap=p.xap, xgip=p.xgip,
+            tackles=p.tackles,
+            clearances_blocks_interceptions=p.clearances_blocks_interceptions,
+            recoveries=p.recoveries,
+            defensive_contribution=p.defensive_contribution,
+            defensive_contribution_per_90=p.defensive_contribution_per_90,
             news=p.news, news_added=p.news_added, squad_number=p.squad_number,
             photo=p.photo,
         )

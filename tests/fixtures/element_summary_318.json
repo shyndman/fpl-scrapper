@@ -50,6 +50,10 @@
       "expected_assists": "0.52",
       "expected_goal_involvements": "1.86",
       "expected_goals_conceded": "0.82",
+      "tackles": 1,
+      "clearances_blocks_interceptions": 2,
+      "recoveries": 3,
+      "defensive_contribution": 6,
       "value": 130,
       "transfers_balance": 40000,
       "selected": 5200000,
@@ -85,7 +89,11 @@
       "expected_goals": "16.52",
       "expected_assists": "9.33",
       "expected_goal_involvements": "25.85",
-      "expected_goals_conceded": "22.10"
+      "expected_goals_conceded": "22.10",
+      "tackles": 0,
+      "clearances_blocks_interceptions": 0,
+      "recoveries": 0,
+      "defensive_contribution": 0
     }
   ]
 }

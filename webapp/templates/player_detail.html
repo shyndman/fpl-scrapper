@@ -155,6 +155,10 @@
             <th class="text-right" title="Goals − xG (over/underperformance)">xGP</th>
             <th class="text-right" title="Assists − xA (over/underperformance)">xAP</th>
             <th class="text-right" title="xGP + xAP (total involvement over/underperformance)">xGIP</th>
+            <th class="text-right" title="Defensive Contribution (tackles + clearances/blocks/interceptions + recoveries)">DC</th>
+            <th class="text-right" title="Tackles">T</th>
+            <th class="text-right" title="Clearances, Blocks &amp; Interceptions">CBI</th>
+            <th class="text-right" title="Recoveries">R</th>
             <th class="text-right">Value</th>
           </tr>
         </thead>
@@ -188,6 +192,12 @@
             <td class="text-right stat-num text-xs" style="color:{% if row.xgip is not none and row.xgip > 0 %}#00ff87{% elif row.xgip is not none and row.xgip < 0 %}#f87171{% else %}#64748b{% endif %};">
               {{ '%.2f'|format(row.xgip) if row.xgip is not none else '—' }}
             </td>
+            <td class="text-right stat-num" style="color:{% if row.defensive_contribution and row.defensive_contribution > 5 %}#38bdf8{% else %}#e2e8f0{% endif %};">
+              {{ row.defensive_contribution or 0 }}
+            </td>
+            <td class="text-right stat-num" style="color:#94a3b8;">{{ row.tackles or 0 }}</td>
+            <td class="text-right stat-num" style="color:#94a3b8;">{{ row.clearances_blocks_interceptions or 0 }}</td>
+            <td class="text-right stat-num" style="color:#94a3b8;">{{ row.recoveries or 0 }}</td>
             <td class="text-right stat-num text-xs" style="color:#64748b;">
               {{ '£%.1fm' | format(row.value / 10) if row.value else '—' }}
             </td>

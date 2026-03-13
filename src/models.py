@@ -241,6 +241,11 @@ class Player:
     xgp: float | None   # goals_scored  - expected_goals
     xap: float | None   # assists        - expected_assists
     xgip: float | None  # xgp + xap
+    tackles: int
+    clearances_blocks_interceptions: int
+    recoveries: int
+    defensive_contribution: int
+    defensive_contribution_per_90: float | None
     news: str | None
     news_added: str | None
     squad_number: int | None
@@ -298,6 +303,11 @@ class Player:
             expected_goal_involvements=_float(d.get("expected_goal_involvements")),
             expected_goals_conceded=_float_str(d.get("expected_goals_conceded")),
             xgp=xgp, xap=xap, xgip=xgip,
+            tackles=int(d.get("tackles", 0)),
+            clearances_blocks_interceptions=int(d.get("clearances_blocks_interceptions", 0)),
+            recoveries=int(d.get("recoveries", 0)),
+            defensive_contribution=int(d.get("defensive_contribution", 0)),
+            defensive_contribution_per_90=_float(d.get("defensive_contribution_per_90")),
             news=_str(d.get("news")),
             news_added=_str(d.get("news_added")),
             squad_number=_int(d.get("squad_number")),
@@ -323,6 +333,9 @@ class Player:
             self.expected_goals, self.expected_assists,
             self.expected_goal_involvements, self.expected_goals_conceded,
             self.xgp, self.xap, self.xgip,
+            self.tackles, self.clearances_blocks_interceptions,
+            self.recoveries, self.defensive_contribution,
+            self.defensive_contribution_per_90,
             self.news, self.news_added, self.squad_number, self.photo,
             self.scraped_at,
         )
@@ -365,6 +378,10 @@ class PlayerHistory:
     xgp: float | None
     xap: float | None
     xgip: float | None
+    tackles: int
+    clearances_blocks_interceptions: int
+    recoveries: int
+    defensive_contribution: int
     value: int | None
     transfers_balance: int | None
     selected: int | None
@@ -410,6 +427,10 @@ class PlayerHistory:
             xgp=xgp,
             xap=xap,
             xgip=xgip,
+            tackles=int(d.get("tackles", 0)),
+            clearances_blocks_interceptions=int(d.get("clearances_blocks_interceptions", 0)),
+            recoveries=int(d.get("recoveries", 0)),
+            defensive_contribution=int(d.get("defensive_contribution", 0)),
             value=_int(d.get("value")),
             transfers_balance=_int(d.get("transfers_balance")),
             selected=_int(d.get("selected")),
@@ -432,6 +453,8 @@ class PlayerHistory:
             self.expected_goals, self.expected_assists,
             self.expected_goal_involvements, self.expected_goals_conceded,
             self.xgp, self.xap, self.xgip,
+            self.tackles, self.clearances_blocks_interceptions,
+            self.recoveries, self.defensive_contribution,
             self.value, self.transfers_balance, self.selected,
             self.transfers_in, self.transfers_out, self.round,
             self.scraped_at,
@@ -472,6 +495,10 @@ class PlayerHistoryPast:
     expected_assists: float | None
     expected_goal_involvements: float | None
     expected_goals_conceded: str | None
+    tackles: int
+    clearances_blocks_interceptions: int
+    recoveries: int
+    defensive_contribution: int
     scraped_at: str = field(default_factory=_now)
 
     @classmethod
@@ -505,6 +532,10 @@ class PlayerHistoryPast:
             expected_assists=_float(d.get("expected_assists")),
             expected_goal_involvements=_float(d.get("expected_goal_involvements")),
             expected_goals_conceded=_float_str(d.get("expected_goals_conceded")),
+            tackles=int(d.get("tackles", 0)),
+            clearances_blocks_interceptions=int(d.get("clearances_blocks_interceptions", 0)),
+            recoveries=int(d.get("recoveries", 0)),
+            defensive_contribution=int(d.get("defensive_contribution", 0)),
         )
 
     def to_db_tuple(self) -> tuple:
@@ -518,6 +549,8 @@ class PlayerHistoryPast:
             self.starts,
             self.expected_goals, self.expected_assists,
             self.expected_goal_involvements, self.expected_goals_conceded,
+            self.tackles, self.clearances_blocks_interceptions,
+            self.recoveries, self.defensive_contribution,
             self.scraped_at,
         )
 
@@ -610,6 +643,10 @@ class LiveGameweekStats:
     expected_assists: float | None
     expected_goal_involvements: float | None
     expected_goals_conceded: str | None
+    tackles: int
+    clearances_blocks_interceptions: int
+    recoveries: int
+    defensive_contribution: int
     total_points: int
     in_dreamteam: int
     explain: str | None  # JSON blob
@@ -647,6 +684,10 @@ class LiveGameweekStats:
             expected_assists=_float(stats.get("expected_assists")),
             expected_goal_involvements=_float(stats.get("expected_goal_involvements")),
             expected_goals_conceded=_float_str(stats.get("expected_goals_conceded")),
+            tackles=int(stats.get("tackles", 0)),
+            clearances_blocks_interceptions=int(stats.get("clearances_blocks_interceptions", 0)),
+            recoveries=int(stats.get("recoveries", 0)),
+            defensive_contribution=int(stats.get("defensive_contribution", 0)),
             total_points=int(stats.get("total_points", 0)),
             in_dreamteam=_bool_int(stats.get("in_dreamteam")),
             explain=json.dumps(explain) if explain else None,
@@ -664,6 +705,8 @@ class LiveGameweekStats:
             self.starts,
             self.expected_goals, self.expected_assists,
             self.expected_goal_involvements, self.expected_goals_conceded,
+            self.tackles, self.clearances_blocks_interceptions,
+            self.recoveries, self.defensive_contribution,
             self.total_points, self.in_dreamteam, self.explain,
             self.scraped_at,
         )

@@ -120,6 +120,11 @@ CREATE TABLE IF NOT EXISTS players (
     xgp                             REAL,
     xap                             REAL,
     xgip                            REAL,
+    tackles                         INTEGER DEFAULT 0,
+    clearances_blocks_interceptions INTEGER DEFAULT 0,
+    recoveries                      INTEGER DEFAULT 0,
+    defensive_contribution          INTEGER DEFAULT 0,
+    defensive_contribution_per_90   REAL,
     news                            TEXT,
     news_added                      TEXT,
     squad_number                    INTEGER,
@@ -165,6 +170,10 @@ CREATE TABLE IF NOT EXISTS player_history (
     xgp                             REAL,
     xap                             REAL,
     xgip                            REAL,
+    tackles                         INTEGER DEFAULT 0,
+    clearances_blocks_interceptions INTEGER DEFAULT 0,
+    recoveries                      INTEGER DEFAULT 0,
+    defensive_contribution          INTEGER DEFAULT 0,
     value                           INTEGER,
     transfers_balance               INTEGER,
     selected                        INTEGER,
@@ -209,6 +218,10 @@ CREATE TABLE IF NOT EXISTS player_history_past (
     expected_assists                REAL,
     expected_goal_involvements      REAL,
     expected_goals_conceded         TEXT,
+    tackles                         INTEGER DEFAULT 0,
+    clearances_blocks_interceptions INTEGER DEFAULT 0,
+    recoveries                      INTEGER DEFAULT 0,
+    defensive_contribution          INTEGER DEFAULT 0,
     scraped_at                      TEXT NOT NULL,
     UNIQUE(player_fpl_id, season_name)
 );
@@ -267,6 +280,10 @@ CREATE TABLE IF NOT EXISTS live_gameweek_stats (
     expected_assists                REAL,
     expected_goal_involvements      REAL,
     expected_goals_conceded         TEXT,
+    tackles                         INTEGER DEFAULT 0,
+    clearances_blocks_interceptions INTEGER DEFAULT 0,
+    recoveries                      INTEGER DEFAULT 0,
+    defensive_contribution          INTEGER DEFAULT 0,
     total_points                    INTEGER DEFAULT 0,
     in_dreamteam                    INTEGER DEFAULT 0,
     explain                         TEXT,
@@ -325,12 +342,30 @@ class FPLDatabase:
     def migrate_schema(self) -> None:
         """Idempotently add columns introduced after the initial schema."""
         new_columns = [
-            ("players",        "xgp  REAL"),
-            ("players",        "xap  REAL"),
-            ("players",        "xgip REAL"),
-            ("player_history", "xgp  REAL"),
-            ("player_history", "xap  REAL"),
-            ("player_history", "xgip REAL"),
+            ("players",               "xgp  REAL"),
+            ("players",               "xap  REAL"),
+            ("players",               "xgip REAL"),
+            ("player_history",        "xgp  REAL"),
+            ("player_history",        "xap  REAL"),
+            ("player_history",        "xgip REAL"),
+            # Defensive stats — added in schema v2
+            ("players",               "tackles                         INTEGER DEFAULT 0"),
+            ("players",               "clearances_blocks_interceptions INTEGER DEFAULT 0"),
+            ("players",               "recoveries                      INTEGER DEFAULT 0"),
+            ("players",               "defensive_contribution          INTEGER DEFAULT 0"),
+            ("players",               "defensive_contribution_per_90   REAL"),
+            ("player_history",        "tackles                         INTEGER DEFAULT 0"),
+            ("player_history",        "clearances_blocks_interceptions INTEGER DEFAULT 0"),
+            ("player_history",        "recoveries                      INTEGER DEFAULT 0"),
+            ("player_history",        "defensive_contribution          INTEGER DEFAULT 0"),
+            ("player_history_past",   "tackles                         INTEGER DEFAULT 0"),
+            ("player_history_past",   "clearances_blocks_interceptions INTEGER DEFAULT 0"),
+            ("player_history_past",   "recoveries                      INTEGER DEFAULT 0"),
+            ("player_history_past",   "defensive_contribution          INTEGER DEFAULT 0"),
+            ("live_gameweek_stats",   "tackles                         INTEGER DEFAULT 0"),
+            ("live_gameweek_stats",   "clearances_blocks_interceptions INTEGER DEFAULT 0"),
+            ("live_gameweek_stats",   "recoveries                      INTEGER DEFAULT 0"),
+            ("live_gameweek_stats",   "defensive_contribution          INTEGER DEFAULT 0"),
         ]
         for table, col_def in new_columns:
             col_name = col_def.split()[0]
@@ -487,9 +522,11 @@ class FPLDatabase:
              bonus, bps, influence, creativity, threat, ict_index, starts,
              expected_goals, expected_assists, expected_goal_involvements,
              expected_goals_conceded, xgp, xap, xgip,
+             tackles, clearances_blocks_interceptions, recoveries,
+             defensive_contribution, defensive_contribution_per_90,
              news, news_added, squad_number, photo, scraped_at)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """
         with self._conn:
             self._conn.executemany(sql, [p.to_db_tuple() for p in players])
@@ -506,9 +543,10 @@ class FPLDatabase:
              influence, creativity, threat, ict_index, starts,
              expected_goals, expected_assists, expected_goal_involvements,
              expected_goals_conceded, xgp, xap, xgip,
+             tackles, clearances_blocks_interceptions, recoveries, defensive_contribution,
              value, transfers_balance, selected,
              transfers_in, transfers_out, round, scraped_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """
         with self._conn:
             self._conn.executemany(sql, [r.to_db_tuple() for r in rows])
@@ -524,8 +562,10 @@ class FPLDatabase:
              yellow_cards, red_cards, saves, bonus, bps,
              influence, creativity, threat, ict_index, starts,
              expected_goals, expected_assists, expected_goal_involvements,
-             expected_goals_conceded, scraped_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             expected_goals_conceded,
+             tackles, clearances_blocks_interceptions, recoveries, defensive_contribution,
+             scraped_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """
         with self._conn:
             self._conn.executemany(sql, [r.to_db_tuple() for r in rows])
@@ -555,9 +595,11 @@ class FPLDatabase:
              yellow_cards, red_cards, saves, bonus, bps,
              influence, creativity, threat, ict_index, starts,
              expected_goals, expected_assists, expected_goal_involvements,
-             expected_goals_conceded, total_points, in_dreamteam, explain,
+             expected_goals_conceded,
+             tackles, clearances_blocks_interceptions, recoveries, defensive_contribution,
+             total_points, in_dreamteam, explain,
              scraped_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """
         with self._conn:
             self._conn.executemany(sql, [r.to_db_tuple() for r in rows])

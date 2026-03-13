@@ -218,6 +218,8 @@ def get_players(
         # Integer columns — sort as-is
         "total_points", "now_cost", "goals_scored", "assists", "minutes",
         "transfers_in", "bonus", "clean_sheets", "goals_conceded", "bps",
+        "tackles", "clearances_blocks_interceptions", "recoveries",
+        "defensive_contribution",
         # REAL columns — sort as-is (no CAST needed)
         "xgp", "xap", "xgip",
         "expected_goals", "expected_assists", "expected_goal_involvements",
@@ -246,6 +248,8 @@ def get_players(
         "expected_goals", "expected_assists",
         "expected_goal_involvements", "expected_goals_conceded",
         "xgp", "xap", "xgip",
+        "tackles", "clearances_blocks_interceptions", "recoveries",
+        "defensive_contribution",
     }
 
     if sort not in valid_sorts:
@@ -319,7 +323,11 @@ def get_players(
                 ROUND(COALESCE(SUM(CAST(expected_goals_conceded AS REAL)), 0), 2)        AS expected_goals_conceded,
                 ROUND(COALESCE(SUM(xgp),                               0), 2)            AS xgp,
                 ROUND(COALESCE(SUM(xap),                               0), 2)            AS xap,
-                ROUND(COALESCE(SUM(xgip),                              0), 2)            AS xgip
+                ROUND(COALESCE(SUM(xgip),                              0), 2)            AS xgip,
+                COALESCE(SUM(tackles),                                 0)                AS tackles,
+                COALESCE(SUM(clearances_blocks_interceptions),         0)                AS clearances_blocks_interceptions,
+                COALESCE(SUM(recoveries),                              0)                AS recoveries,
+                COALESCE(SUM(defensive_contribution),                  0)                AS defensive_contribution
             FROM player_history
             WHERE gameweek_fpl_id BETWEEN ? AND ?
             GROUP BY player_fpl_id
@@ -358,7 +366,11 @@ def get_players(
                 COALESCE(gs.expected_goals_conceded,    0)   AS expected_goals_conceded,
                 COALESCE(gs.xgp,                        0)   AS xgp,
                 COALESCE(gs.xap,                        0)   AS xap,
-                COALESCE(gs.xgip,                       0)   AS xgip
+                COALESCE(gs.xgip,                       0)   AS xgip,
+                COALESCE(gs.tackles,                    0)   AS tackles,
+                COALESCE(gs.clearances_blocks_interceptions, 0) AS clearances_blocks_interceptions,
+                COALESCE(gs.recoveries,                 0)   AS recoveries,
+                COALESCE(gs.defensive_contribution,     0)   AS defensive_contribution
             FROM players p
             JOIN teams t ON t.fpl_id = p.team_fpl_id
             LEFT JOIN gw_stats gs ON gs.player_fpl_id = p.fpl_id

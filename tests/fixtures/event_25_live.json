@@ -25,6 +25,10 @@
         "expected_assists": "0.44",
         "expected_goal_involvements": "1.26",
         "expected_goals_conceded": "0.74",
+        "tackles": 0,
+        "clearances_blocks_interceptions": 1,
+        "recoveries": 2,
+        "defensive_contribution": 3,
         "total_points": 12,
         "in_dreamteam": true
       },
