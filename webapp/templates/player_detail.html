@@ -32,8 +32,12 @@
         <span class="pos-pill {{ player.element_type | position_color }} text-sm">
           {{ player.element_type | position_name }}
         </span>
+        {% set player_status_dot = 'suspended' %}
+        {% if player.status == 'a' %}{% set player_status_dot = 'available' %}{% endif %}
+        {% if player.status == 'd' %}{% set player_status_dot = 'doubt' %}{% endif %}
+        {% if player.status == 'i' %}{% set player_status_dot = 'injured' %}{% endif %}
         <span class="inline-flex items-center gap-1.5 text-sm {{ player.status | status_class }}">
-          <span class="status-dot {{ 'available' if player.status == 'a' else 'doubt' if player.status == 'd' else 'injured' if player.status == 'i' else 'suspended' }}"></span>
+          <span class="status-dot {{ player_status_dot }}"></span>
           {{ player.status | status_label }}
         </span>
       </div>
@@ -62,17 +66,17 @@
       <!-- Quick stats row -->
       <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
         {% set quick_stats = [
-          ('Total Pts', player.total_points, '#00ff87'),
-          ('Price', player.now_cost | format_cost, '#e2e8f0'),
-          ('Form', player.form or '0.0', '#38bdf8'),
-          ('PPG', player.points_per_game or '0.0', '#e2e8f0'),
-          ('Owned', (player.selected_by_percent or '0.0') ~ '%', '#e2e8f0'),
-          ('Starts', player.starts or 0, '#e2e8f0'),
+          { label: 'Total Pts', value: player.total_points, color: '#00ff87' },
+          { label: 'Price', value: player.now_cost | format_cost, color: '#e2e8f0' },
+          { label: 'Form', value: player.form or '0.0', color: '#38bdf8' },
+          { label: 'PPG', value: player.points_per_game or '0.0', color: '#e2e8f0' },
+          { label: 'Owned', value: (player.selected_by_percent or '0.0') ~ '%', color: '#e2e8f0' },
+          { label: 'Starts', value: player.starts or 0, color: '#e2e8f0' }
         ] %}
-        {% for label, val, color in quick_stats %}
+        {% for stat in quick_stats %}
         <div class="text-center p-3 rounded-lg" style="background:#162040;">
-          <p class="text-xs mb-1" style="color:#64748b;">{{ label }}</p>
-          <p class="font-bold stat-num text-lg" style="color:{{ color }};">{{ val }}</p>
+          <p class="text-xs mb-1" style="color:#64748b;">{{ stat.label }}</p>
+          <p class="font-bold stat-num text-lg" style="color:{{ stat.color }};">{{ stat.value }}</p>
         </div>
         {% endfor %}
       </div>
@@ -82,19 +86,19 @@
   <!-- Stat Cards -->
   <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
     {% set season_stats = [
-      ('Goals', player.goals_scored or 0),
-      ('Assists', player.assists or 0),
-      ('CS', player.clean_sheets or 0),
-      ('Minutes', player.minutes or 0),
-      ('Bonus', player.bonus or 0),
-      ('Yellow', player.yellow_cards or 0),
-      ('Red', player.red_cards or 0),
-      ('Saves', player.saves or 0),
+      { label: 'Goals', value: player.goals_scored or 0 },
+      { label: 'Assists', value: player.assists or 0 },
+      { label: 'CS', value: player.clean_sheets or 0 },
+      { label: 'Minutes', value: player.minutes or 0 },
+      { label: 'Bonus', value: player.bonus or 0 },
+      { label: 'Yellow', value: player.yellow_cards or 0 },
+      { label: 'Red', value: player.red_cards or 0 },
+      { label: 'Saves', value: player.saves or 0 }
     ] %}
-    {% for label, val in season_stats %}
+    {% for stat in season_stats %}
     <div class="card p-3 text-center">
-      <p class="text-xs mb-1" style="color:#64748b;">{{ label }}</p>
-      <p class="font-bold text-xl stat-num">{{ val }}</p>
+      <p class="text-xs mb-1" style="color:#64748b;">{{ stat.label }}</p>
+      <p class="font-bold text-xl stat-num">{{ stat.value }}</p>
     </div>
     {% endfor %}
   </div>
@@ -170,7 +174,7 @@
               <span class="text-sm" style="color:#94a3b8;">{{ row.opponent_short_name or 'N/A' }}</span>
             </td>
             <td class="text-xs" style="color:#64748b;">
-              {{ 'H' if row.was_home else 'A' }}
+              {% if row.was_home %}H{% else %}A{% endif %}
             </td>
             <td class="text-right font-bold stat-num" style="color:{% if row.total_points >= 10 %}#00ff87{% elif row.total_points >= 6 %}#38bdf8{% elif row.total_points <= 1 %}#f87171{% else %}#e2e8f0{% endif %};">
               {{ row.total_points }}
@@ -181,16 +185,16 @@
             <td class="text-right stat-num">{{ row.clean_sheets or 0 }}</td>
             <td class="text-right stat-num">{{ row.bonus or 0 }}</td>
             <td class="text-right stat-num" style="color:#64748b;">{{ row.bps or 0 }}</td>
-            <td class="text-right stat-num text-xs" style="color:#64748b;">{{ '%.2f'|format(row.expected_goals) if row.expected_goals is not none else '—' }}</td>
-            <td class="text-right stat-num text-xs" style="color:#64748b;">{{ '%.2f'|format(row.expected_assists) if row.expected_assists is not none else '—' }}</td>
-            <td class="text-right stat-num text-xs" style="color:{% if row.xgp is not none and row.xgp > 0 %}#00ff87{% elif row.xgp is not none and row.xgp < 0 %}#f87171{% else %}#64748b{% endif %};">
-              {{ '%.2f'|format(row.xgp) if row.xgp is not none else '—' }}
+            <td class="text-right stat-num text-xs" style="color:#64748b;">{% if row.expected_goals != null %}{{ row.expected_goals.toFixed(2) }}{% else %}—{% endif %}</td>
+            <td class="text-right stat-num text-xs" style="color:#64748b;">{% if row.expected_assists != null %}{{ row.expected_assists.toFixed(2) }}{% else %}—{% endif %}</td>
+            <td class="text-right stat-num text-xs" style="color:{% if row.xgp != null and row.xgp > 0 %}#00ff87{% elif row.xgp != null and row.xgp < 0 %}#f87171{% else %}#64748b{% endif %};">
+              {% if row.xgp != null %}{{ row.xgp.toFixed(2) }}{% else %}—{% endif %}
             </td>
-            <td class="text-right stat-num text-xs" style="color:{% if row.xap is not none and row.xap > 0 %}#00ff87{% elif row.xap is not none and row.xap < 0 %}#f87171{% else %}#64748b{% endif %};">
-              {{ '%.2f'|format(row.xap) if row.xap is not none else '—' }}
+            <td class="text-right stat-num text-xs" style="color:{% if row.xap != null and row.xap > 0 %}#00ff87{% elif row.xap != null and row.xap < 0 %}#f87171{% else %}#64748b{% endif %};">
+              {% if row.xap != null %}{{ row.xap.toFixed(2) }}{% else %}—{% endif %}
             </td>
-            <td class="text-right stat-num text-xs" style="color:{% if row.xgip is not none and row.xgip > 0 %}#00ff87{% elif row.xgip is not none and row.xgip < 0 %}#f87171{% else %}#64748b{% endif %};">
-              {{ '%.2f'|format(row.xgip) if row.xgip is not none else '—' }}
+            <td class="text-right stat-num text-xs" style="color:{% if row.xgip != null and row.xgip > 0 %}#00ff87{% elif row.xgip != null and row.xgip < 0 %}#f87171{% else %}#64748b{% endif %};">
+              {% if row.xgip != null %}{{ row.xgip.toFixed(2) }}{% else %}—{% endif %}
             </td>
             <td class="text-right stat-num" style="color:{% if row.defensive_contribution and row.defensive_contribution > 5 %}#38bdf8{% else %}#e2e8f0{% endif %};">
               {{ row.defensive_contribution or 0 }}
@@ -199,7 +203,7 @@
             <td class="text-right stat-num" style="color:#94a3b8;">{{ row.clearances_blocks_interceptions or 0 }}</td>
             <td class="text-right stat-num" style="color:#94a3b8;">{{ row.recoveries or 0 }}</td>
             <td class="text-right stat-num text-xs" style="color:#64748b;">
-              {{ '£%.1fm' | format(row.value / 10) if row.value else '—' }}
+              {% if row.value %}{{ '£' ~ (row.value / 10).toFixed(1) ~ 'm' }}{% else %}—{% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -241,10 +245,10 @@
             <td class="text-right stat-num">{{ s.clean_sheets or 0 }}</td>
             <td class="text-right stat-num">{{ s.bonus or 0 }}</td>
             <td class="text-right stat-num text-xs" style="color:#64748b;">
-              {{ s.start_cost | format_cost if s.start_cost else '—' }}
+              {% if s.start_cost %}{{ s.start_cost | format_cost }}{% else %}—{% endif %}
             </td>
             <td class="text-right stat-num text-xs" style="color:#64748b;">
-              {{ s.end_cost | format_cost if s.end_cost else '—' }}
+              {% if s.end_cost %}{{ s.end_cost | format_cost }}{% else %}—{% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -259,7 +263,7 @@
 
 {% block scripts %}
 <script>
-const history = {{ history | tojson }};
+const history = {{ history | dump | safe }};
 
 // GW Points chart
 if (history.length > 0) {
@@ -281,7 +285,7 @@ if (history.length > 0) {
 }
 
 // ICT Radar
-const player = {{ player | tojson }};
+const player = {{ player | dump | safe }};
 createRadarChart('ictChart',
   ['Influence', 'Creativity', 'Threat', 'ICT Index'],
   [{

@@ -9,7 +9,7 @@
       <h1 class="text-3xl font-bold"><span class="gradient-text">Players</span></h1>
       <p class="text-sm mt-1 flex items-center gap-2 flex-wrap" style="color:#64748b;">
         {{ total }} player{% if total != 1 %}s{% endif %} found
-        {% if filter_gw_start is not none or filter_gw_end is not none %}
+        {% if filter_gw_start != null or filter_gw_end != null %}
         <span class="inline-flex items-center text-xs px-2 py-0.5 rounded-full"
               style="background:rgba(56,189,248,0.1); color:#38bdf8; border:1px solid rgba(56,189,248,0.3);">
           GW {{ filter_gw_start or 1 }} – {% if filter_gw_end %}GW {{ filter_gw_end }}{% else %}latest{% endif %}
@@ -40,39 +40,46 @@
       </div>
       <span class="text-xs" style="color:#64748b;">Sort by</span>
       <form method="get" id="sort-form">
-        {% if filter_pos is not none %}<input type="hidden" name="pos" value="{{ filter_pos }}" />{% endif %}
-        {% if filter_team is not none %}<input type="hidden" name="team" value="{{ filter_team }}" />{% endif %}
+        {% if filter_pos != null %}<input type="hidden" name="pos" value="{{ filter_pos }}" />{% endif %}
+        {% if filter_team != null %}<input type="hidden" name="team" value="{{ filter_team }}" />{% endif %}
         {% if filter_status %}<input type="hidden" name="status" value="{{ filter_status }}" />{% endif %}
-        {% if filter_min_cost is not none %}<input type="hidden" name="min_cost" value="{{ filter_min_cost }}" />{% endif %}
-        {% if filter_max_cost is not none %}<input type="hidden" name="max_cost" value="{{ filter_max_cost }}" />{% endif %}
-        {% if filter_gw_start is not none %}<input type="hidden" name="gw_start" value="{{ filter_gw_start }}" />{% endif %}
-        {% if filter_gw_end is not none %}<input type="hidden" name="gw_end" value="{{ filter_gw_end }}" />{% endif %}
+        {% if filter_min_cost != null %}<input type="hidden" name="min_cost" value="{{ filter_min_cost }}" />{% endif %}
+        {% if filter_max_cost != null %}<input type="hidden" name="max_cost" value="{{ filter_max_cost }}" />{% endif %}
+        {% if filter_gw_start != null %}<input type="hidden" name="gw_start" value="{{ filter_gw_start }}" />{% endif %}
+        {% if filter_gw_end != null %}<input type="hidden" name="gw_end" value="{{ filter_gw_end }}" />{% endif %}
         <input type="hidden" name="order" value="{{ filter_order or 'desc' }}" />
         <select name="sort" onchange="cleanAndSubmit(this.form)"
                 class="text-sm rounded-lg px-3 py-2 border focus:outline-none"
                 style="background:#0f1729; border-color:#1e2d4a; color:#e2e8f0;">
           {% set sort_opts = [
-            ('total_points','Total Pts'), ('form','Form'),          ('now_cost','Price'),
-            ('points_per_game','PPG'),    ('goals_scored','Goals'), ('assists','Assists'),
-            ('clean_sheets','Clean Sheets'),('goals_conceded','Goals Conceded'),
-            ('minutes','Minutes'),        ('bonus','Bonus'),        ('bps','BPS'),
-            ('selected_by_percent','Ownership'),('transfers_in','Transfers In'),
-            ('influence','Influence'),    ('creativity','Creativity'),
-            ('threat','Threat'),          ('ict_index','ICT Index'),
-            ('expected_goals','xG'),      ('expected_assists','xA'),
-            ('expected_goal_involvements','xGI'),('expected_goals_conceded','xGC'),
-            ('xgp','xGP'),               ('xap','xAP'),            ('xgip','xGIP'),
+            { value: 'total_points', label: 'Total Pts' }, { value: 'form', label: 'Form' }, { value: 'now_cost', label: 'Price' },
+            { value: 'points_per_game', label: 'PPG' }, { value: 'goals_scored', label: 'Goals' }, { value: 'assists', label: 'Assists' },
+            { value: 'clean_sheets', label: 'Clean Sheets' }, { value: 'goals_conceded', label: 'Goals Conceded' },
+            { value: 'minutes', label: 'Minutes' }, { value: 'bonus', label: 'Bonus' }, { value: 'bps', label: 'BPS' },
+            { value: 'selected_by_percent', label: 'Ownership' }, { value: 'transfers_in', label: 'Transfers In' },
+            { value: 'influence', label: 'Influence' }, { value: 'creativity', label: 'Creativity' },
+            { value: 'threat', label: 'Threat' }, { value: 'ict_index', label: 'ICT Index' },
+            { value: 'expected_goals', label: 'xG' }, { value: 'expected_assists', label: 'xA' },
+            { value: 'expected_goal_involvements', label: 'xGI' }, { value: 'expected_goals_conceded', label: 'xGC' },
+            { value: 'xgp', label: 'xGP' }, { value: 'xap', label: 'xAP' }, { value: 'xgip', label: 'xGIP' }
           ] %}
-          {% for val, label in sort_opts %}
-          <option value="{{ val }}" {% if filter_sort == val %}selected{% endif %}>{{ label }}</option>
+          {% for option in sort_opts %}
+          <option value="{{ option.value }}" {% if filter_sort == option.value %}selected{% endif %}>{{ option.label }}</option>
           {% endfor %}
         </select>
       </form>
       <!-- Flip sort direction — works for both grid and compact views -->
+      {% if filter_order == 'asc' %}
+      {% set sort_order_button_color = '#00ff87' %}
+      {% set sort_order_button_title = 'Ascending — click for descending' %}
+      {% else %}
+      {% set sort_order_button_color = '#e2e8f0' %}
+      {% set sort_order_button_title = 'Descending — click for ascending' %}
+      {% endif %}
       <button onclick="toggleSortOrder()"
               class="flex items-center gap-1 text-sm rounded-lg px-2.5 py-2 border transition-all"
-              style="background:#0f1729; border-color:#1e2d4a; color:{{ '#00ff87' if filter_order == 'asc' else '#e2e8f0' }};"
-              title="{{ 'Ascending — click for descending' if filter_order == 'asc' else 'Descending — click for ascending' }}">
+              style="background:#0f1729; border-color:#1e2d4a; color:{{ sort_order_button_color }};"
+              title="{{ sort_order_button_title }}">
         {% if filter_order == 'asc' %}↑ Asc{% else %}↓ Desc{% endif %}
       </button>
     </div>
@@ -87,11 +94,11 @@
          chip/select preserves the others.  Each control that "owns" a field
          calls clearHidden(form, name) via onclick/onchange BEFORE submitting,
          so its own value wins and the hidden input is not double-sent. #}
-      {% if filter_pos is not none %}<input type="hidden" name="pos" value="{{ filter_pos }}" />{% endif %}
-      {% if filter_team is not none %}<input type="hidden" name="team" value="{{ filter_team }}" />{% endif %}
+      {% if filter_pos != null %}<input type="hidden" name="pos" value="{{ filter_pos }}" />{% endif %}
+      {% if filter_team != null %}<input type="hidden" name="team" value="{{ filter_team }}" />{% endif %}
       {% if filter_status %}<input type="hidden" name="status" value="{{ filter_status }}" />{% endif %}
-      {% if filter_gw_start is not none %}<input type="hidden" name="gw_start" value="{{ filter_gw_start }}" />{% endif %}
-      {% if filter_gw_end is not none %}<input type="hidden" name="gw_end" value="{{ filter_gw_end }}" />{% endif %}
+      {% if filter_gw_start != null %}<input type="hidden" name="gw_start" value="{{ filter_gw_start }}" />{% endif %}
+      {% if filter_gw_end != null %}<input type="hidden" name="gw_end" value="{{ filter_gw_end }}" />{% endif %}
       <input type="hidden" name="sort" value="{{ filter_sort or 'total_points' }}" />
       <input type="hidden" name="order" value="{{ filter_order or 'desc' }}" />
 
@@ -99,12 +106,12 @@
       <div>
         <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Position</p>
         <div class="flex gap-2">
-          {% for pos_val, pos_label in [(None,'All'),(1,'GK'),(2,'DEF'),(3,'MID'),(4,'FWD')] %}
+          {% for option in [{ value: null, label: 'All' }, { value: 1, label: 'GK' }, { value: 2, label: 'DEF' }, { value: 3, label: 'MID' }, { value: 4, label: 'FWD' }] %}
           <button type="submit"
-                  {% if pos_val is not none %}name="pos" value="{{ pos_val }}"{% endif %}
+                  {% if option.value != null %}name="pos" value="{{ option.value }}"{% endif %}
                   onclick="clearHidden(this.form,'pos')"
-                  class="filter-chip {% if filter_pos == pos_val or (filter_pos is none and pos_val is none) %}active{% endif %}">
-            {{ pos_label }}
+                  class="filter-chip {% if filter_pos == option.value or (filter_pos == null and option.value == null) %}active{% endif %}">
+            {{ option.label }}
           </button>
           {% endfor %}
         </div>
@@ -114,12 +121,12 @@
       <div>
         <p class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:#64748b;">Status</p>
         <div class="flex gap-2">
-          {% for stat_val, stat_label in [(None,'All'),('available','Available'),('doubt','Doubt'),('injured','Injured')] %}
+          {% for option in [{ value: null, label: 'All' }, { value: 'available', label: 'Available' }, { value: 'doubt', label: 'Doubt' }, { value: 'injured', label: 'Injured' }] %}
           <button type="submit"
-                  {% if stat_val %}name="status" value="{{ stat_val }}"{% endif %}
+                  {% if option.value %}name="status" value="{{ option.value }}"{% endif %}
                   onclick="clearHidden(this.form,'status')"
-                  class="filter-chip {% if filter_status == stat_val or (filter_status is none and stat_val is none) %}active{% endif %}">
-            {{ stat_label }}
+                  class="filter-chip {% if filter_status == option.value or (filter_status == null and option.value == null) %}active{% endif %}">
+            {{ option.label }}
           </button>
           {% endfor %}
         </div>
@@ -204,7 +211,7 @@
     'expected_goals': 'xG',       'expected_assists': 'xA',
     'expected_goal_involvements': 'xGI', 'expected_goals_conceded': 'xGC',
     'xgp': 'xGP',                 'xap': 'xAP',              'xgip': 'xGIP',
-    'web_name': 'Name',
+    'web_name': 'Name'
   } %}
   {% set _sort_sfx = {'total_points': ' pts', 'selected_by_percent': '%'} %}
 
@@ -226,7 +233,10 @@
         </span>
         <!-- Status dot -->
         {% if p.status and p.status != 'a' %}
-        <span class="absolute top-2 right-2 status-dot {{ 'doubt' if p.status == 'd' else 'injured' if p.status == 'i' else 'suspended' }}"
+        {% set status_dot = 'suspended' %}
+        {% if p.status == 'd' %}{% set status_dot = 'doubt' %}{% endif %}
+        {% if p.status == 'i' %}{% set status_dot = 'injured' %}{% endif %}
+        <span class="absolute top-2 right-2 status-dot {{ status_dot }}"
               title="{{ p.status | status_label }}"></span>
         {% endif %}
       </div>
@@ -248,13 +258,15 @@
             <p class="font-bold text-sm stat-num">{{ p.now_cost | format_cost }}</p>
           </div>
           <div class="text-right">
-            {% if filter_sort in ('now_cost', 'web_name') %}
+            {% if filter_sort == 'now_cost' or filter_sort == 'web_name' %}
               {# No meaningful numeric stat for these sorts — fall back to total pts #}
               <p class="text-xs" style="color:#64748b;">Total Pts</p>
               <p class="font-bold stat-num" style="color:#00ff87;">{{ p.total_points or 0 }} pts</p>
             {% else %}
-              <p class="text-xs" style="color:#64748b;">{{ _sort_labels.get(filter_sort, 'Total Pts') }}</p>
-              <p class="font-bold stat-num" style="color:#00ff87;">{{ p[filter_sort] or 0 }}{{ _sort_sfx.get(filter_sort, '') }}</p>
+              {% set sort_label = _sort_labels[filter_sort] or 'Total Pts' %}
+              {% set sort_suffix = _sort_sfx[filter_sort] or '' %}
+              <p class="text-xs" style="color:#64748b;">{{ sort_label }}</p>
+              <p class="font-bold stat-num" style="color:#00ff87;">{{ p[filter_sort] or 0 }}{{ sort_suffix }}</p>
             {% endif %}
           </div>
         </div>
@@ -268,15 +280,15 @@
         </div>
         <!-- Mini stats row 2: xG / xA / ICT -->
         <div class="flex justify-between text-xs" style="color:#64748b;">
-          <span>xG <strong style="color:#e2e8f0;">{{ '%.2f'|format(p.expected_goals or 0) }}</strong></span>
-          <span>xA <strong style="color:#e2e8f0;">{{ '%.2f'|format(p.expected_assists or 0) }}</strong></span>
+          <span>xG <strong style="color:#e2e8f0;">{{ (p.expected_goals or 0).toFixed(2) }}</strong></span>
+          <span>xA <strong style="color:#e2e8f0;">{{ (p.expected_assists or 0).toFixed(2) }}</strong></span>
           <span>ICT <strong style="color:#e2e8f0;">{{ p.ict_index or '0.0' }}</strong></span>
         </div>
         <!-- Mini stats row 3: xGP / xAP / xGIP -->
         <div class="flex justify-between text-xs" style="color:#64748b;">
-          <span>xGP <strong style="color:{{ '#00ff87' if p.xgp and p.xgp > 0 else ('#f87171' if p.xgp and p.xgp < 0 else '#e2e8f0') }};">{{ '%.2f'|format(p.xgp) if p.xgp is not none else '—' }}</strong></span>
-          <span>xAP <strong style="color:{{ '#00ff87' if p.xap and p.xap > 0 else ('#f87171' if p.xap and p.xap < 0 else '#e2e8f0') }};">{{ '%.2f'|format(p.xap) if p.xap is not none else '—' }}</strong></span>
-          <span>xGIP <strong style="color:{{ '#00ff87' if p.xgip and p.xgip > 0 else ('#f87171' if p.xgip and p.xgip < 0 else '#e2e8f0') }};">{{ '%.2f'|format(p.xgip) if p.xgip is not none else '—' }}</strong></span>
+          <span>xGP <strong style="color:{% if p.xgp != null and p.xgp > 0 %}#00ff87{% elif p.xgp != null and p.xgp < 0 %}#f87171{% else %}#e2e8f0{% endif %};">{% if p.xgp != null %}{{ p.xgp.toFixed(2) }}{% else %}—{% endif %}</strong></span>
+          <span>xAP <strong style="color:{% if p.xap != null and p.xap > 0 %}#00ff87{% elif p.xap != null and p.xap < 0 %}#f87171{% else %}#e2e8f0{% endif %};">{% if p.xap != null %}{{ p.xap.toFixed(2) }}{% else %}—{% endif %}</strong></span>
+          <span>xGIP <strong style="color:{% if p.xgip != null and p.xgip > 0 %}#00ff87{% elif p.xgip != null and p.xgip < 0 %}#f87171{% else %}#e2e8f0{% endif %};">{% if p.xgip != null %}{{ p.xgip.toFixed(2) }}{% else %}—{% endif %}</strong></span>
         </div>
 
         <!-- Form + Ownership -->
@@ -302,42 +314,44 @@
       <thead>
         <tr style="border-bottom:2px solid #1e2d4a;">
           <!-- Player column: sticky so it stays visible while scrolling -->
+          {% set player_header_active = fs == 'web_name' %}
           <th onclick="sortByColumn('web_name')"
               class="text-left py-2 pr-6 font-semibold uppercase tracking-wider cursor-pointer"
-              style="color:{{ _h if fs == 'web_name' else _m }}; position:sticky; left:0; background:#0a0e1a; z-index:1; user-select:none;">
-            Player {% if fs == 'web_name' %}{{ '↑' if filter_order == 'asc' else '↓' }}{% else %}<span style="opacity:0.25;">↕</span>{% endif %}
+              style="color:{% if player_header_active %}{{ _h }}{% else %}{{ _m }}{% endif %}; position:sticky; left:0; background:#0a0e1a; z-index:1; user-select:none;">
+            Player {% if player_header_active %}{% if filter_order == 'asc' %}↑{% else %}↓{% endif %}{% else %}<span style="opacity:0.25;">↕</span>{% endif %}
           </th>
           {% set headers = [
-            ('now_cost',                    '£',    'Price'),
-            ('total_points',               'Pts',   'Total Points'),
-            ('points_per_game',            'PPG',   'Points Per Game'),
-            ('goals_scored',               'G',     'Goals'),
-            ('assists',                    'A',     'Assists'),
-            ('clean_sheets',               'CS',    'Clean Sheets'),
-            ('goals_conceded',             'GC',    'Goals Conceded'),
-            ('bonus',                      'Bon',   'Bonus Points'),
-            ('bps',                        'BPS',   'Bonus Points System'),
-            ('minutes',                    'Mins',  'Minutes Played'),
-            ('expected_goals',             'xG',    'Expected Goals'),
-            ('expected_assists',           'xA',    'Expected Assists'),
-            ('expected_goal_involvements', 'xGI',   'Expected Goal Involvements'),
-            ('expected_goals_conceded',    'xGC',   'Expected Goals Conceded'),
-            ('xgp',                        'xGP',   'Goals vs Expected (Goals - xG)'),
-            ('xap',                        'xAP',   'Assists vs Expected (Assists - xA)'),
-            ('xgip',                       'xGIP',  'Goal Involvements vs Expected (xGP + xAP)'),
-            ('influence',                  'Inf',   'Influence'),
-            ('creativity',                 'Crt',   'Creativity'),
-            ('threat',                     'Thr',   'Threat'),
-            ('ict_index',                  'ICT',   'ICT Index'),
-            ('form',                       'Form',  'Form (last 5 GWs)'),
-            ('selected_by_percent',        'Own%',  'Ownership %'),
-            ('transfers_in',               'Trans+','Transfers In'),
+            { field: 'now_cost', abbr: '£', tooltip: 'Price' },
+            { field: 'total_points', abbr: 'Pts', tooltip: 'Total Points' },
+            { field: 'points_per_game', abbr: 'PPG', tooltip: 'Points Per Game' },
+            { field: 'goals_scored', abbr: 'G', tooltip: 'Goals' },
+            { field: 'assists', abbr: 'A', tooltip: 'Assists' },
+            { field: 'clean_sheets', abbr: 'CS', tooltip: 'Clean Sheets' },
+            { field: 'goals_conceded', abbr: 'GC', tooltip: 'Goals Conceded' },
+            { field: 'bonus', abbr: 'Bon', tooltip: 'Bonus Points' },
+            { field: 'bps', abbr: 'BPS', tooltip: 'Bonus Points System' },
+            { field: 'minutes', abbr: 'Mins', tooltip: 'Minutes Played' },
+            { field: 'expected_goals', abbr: 'xG', tooltip: 'Expected Goals' },
+            { field: 'expected_assists', abbr: 'xA', tooltip: 'Expected Assists' },
+            { field: 'expected_goal_involvements', abbr: 'xGI', tooltip: 'Expected Goal Involvements' },
+            { field: 'expected_goals_conceded', abbr: 'xGC', tooltip: 'Expected Goals Conceded' },
+            { field: 'xgp', abbr: 'xGP', tooltip: 'Goals vs Expected (Goals - xG)' },
+            { field: 'xap', abbr: 'xAP', tooltip: 'Assists vs Expected (Assists - xA)' },
+            { field: 'xgip', abbr: 'xGIP', tooltip: 'Goal Involvements vs Expected (xGP + xAP)' },
+            { field: 'influence', abbr: 'Inf', tooltip: 'Influence' },
+            { field: 'creativity', abbr: 'Crt', tooltip: 'Creativity' },
+            { field: 'threat', abbr: 'Thr', tooltip: 'Threat' },
+            { field: 'ict_index', abbr: 'ICT', tooltip: 'ICT Index' },
+            { field: 'form', abbr: 'Form', tooltip: 'Form (last 5 GWs)' },
+            { field: 'selected_by_percent', abbr: 'Own%', tooltip: 'Ownership %' },
+            { field: 'transfers_in', abbr: 'Trans+', tooltip: 'Transfers In' }
           ] %}
-          {% for field, abbr, tooltip in headers %}
-          <th title="{{ tooltip }}" onclick="sortByColumn('{{ field }}')"
+          {% for header in headers %}
+          {% set header_active = fs == header.field %}
+          <th title="{{ header.tooltip }}" onclick="sortByColumn('{{ header.field }}')"
               class="text-right py-2 px-2 font-semibold uppercase tracking-wider cursor-pointer"
-              style="color:{{ _h if fs == field else _m }}; user-select:none;">
-            {{ abbr }} {% if fs == field %}{{ '↑' if filter_order == 'asc' else '↓' }}{% else %}<span style="opacity:0.25;">↕</span>{% endif %}
+              style="color:{% if header_active %}{{ _h }}{% else %}{{ _m }}{% endif %}; user-select:none;">
+            {{ header.abbr }} {% if header_active %}{% if filter_order == 'asc' %}↑{% else %}↓{% endif %}{% else %}<span style="opacity:0.25;">↕</span>{% endif %}
           </th>
           {% endfor %}
         </tr>
@@ -367,7 +381,10 @@
                     {{ p.element_type | position_name }}
                   </span>
                   {% if p.status and p.status != 'a' %}
-                  <span class="status-dot {{ 'doubt' if p.status == 'd' else 'injured' if p.status == 'i' else 'suspended' }}"
+                  {% set compact_status_dot = 'suspended' %}
+                  {% if p.status == 'd' %}{% set compact_status_dot = 'doubt' %}{% endif %}
+                  {% if p.status == 'i' %}{% set compact_status_dot = 'injured' %}{% endif %}
+                  <span class="status-dot {{ compact_status_dot }}"
                         style="width:6px; height:6px;"
                         title="{{ p.status | status_label }}"></span>
                   {% endif %}
@@ -384,76 +401,76 @@
           </td>
 
           <!-- Data cells (order must match headers list above) -->
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'now_cost' else _t }};">
+          <td class="text-right px-2 stat-num" style="color:{% if fs == 'now_cost' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.now_cost | format_cost }}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'total_points' else _t }};">
+          <td class="text-right px-2 stat-num" style="color:{% if fs == 'total_points' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.total_points or 0 }}
           </td>
-          <td class="text-right px-2" style="color:{{ _h if fs == 'points_per_game' else _t }};">
+          <td class="text-right px-2" style="color:{% if fs == 'points_per_game' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.points_per_game or '0.0' }}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'goals_scored' else _t }};">
+          <td class="text-right px-2 stat-num" style="color:{% if fs == 'goals_scored' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.goals_scored or 0 }}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'assists' else _t }};">
+          <td class="text-right px-2 stat-num" style="color:{% if fs == 'assists' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.assists or 0 }}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'clean_sheets' else _t }};">
+          <td class="text-right px-2 stat-num" style="color:{% if fs == 'clean_sheets' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.clean_sheets or 0 }}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'goals_conceded' else _t }};">
+          <td class="text-right px-2 stat-num" style="color:{% if fs == 'goals_conceded' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.goals_conceded or 0 }}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'bonus' else _t }};">
+          <td class="text-right px-2 stat-num" style="color:{% if fs == 'bonus' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.bonus or 0 }}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'bps' else _t }};">
+          <td class="text-right px-2 stat-num" style="color:{% if fs == 'bps' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.bps or 0 }}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'minutes' else _t }};">
+          <td class="text-right px-2 stat-num" style="color:{% if fs == 'minutes' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.minutes or 0 }}
           </td>
-          <td class="text-right px-2" style="color:{{ _h if fs == 'expected_goals' else _t }};">
-            {{ '%.2f'|format(p.expected_goals or 0) }}
+          <td class="text-right px-2" style="color:{% if fs == 'expected_goals' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
+            {{ (p.expected_goals or 0).toFixed(2) }}
           </td>
-          <td class="text-right px-2" style="color:{{ _h if fs == 'expected_assists' else _t }};">
-            {{ '%.2f'|format(p.expected_assists or 0) }}
+          <td class="text-right px-2" style="color:{% if fs == 'expected_assists' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
+            {{ (p.expected_assists or 0).toFixed(2) }}
           </td>
-          <td class="text-right px-2" style="color:{{ _h if fs == 'expected_goal_involvements' else _t }};">
-            {{ '%.2f'|format(p.expected_goal_involvements or 0) }}
+          <td class="text-right px-2" style="color:{% if fs == 'expected_goal_involvements' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
+            {{ (p.expected_goal_involvements or 0).toFixed(2) }}
           </td>
-          <td class="text-right px-2" style="color:{{ _h if fs == 'expected_goals_conceded' else _t }};">
+          <td class="text-right px-2" style="color:{% if fs == 'expected_goals_conceded' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.expected_goals_conceded or '0.00' }}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ '#00ff87' if p.xgp and p.xgp > 0 else ('#f87171' if p.xgp and p.xgp < 0 else (_h if fs == 'xgp' else _t)) }};">
-            {{ '%.2f'|format(p.xgp) if p.xgp is not none else '—' }}
+          <td class="text-right px-2 stat-num" style="color:{% if p.xgp != null and p.xgp > 0 %}#00ff87{% elif p.xgp != null and p.xgp < 0 %}#f87171{% elif fs == 'xgp' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
+            {% if p.xgp != null %}{{ p.xgp.toFixed(2) }}{% else %}—{% endif %}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ '#00ff87' if p.xap and p.xap > 0 else ('#f87171' if p.xap and p.xap < 0 else (_h if fs == 'xap' else _t)) }};">
-            {{ '%.2f'|format(p.xap) if p.xap is not none else '—' }}
+          <td class="text-right px-2 stat-num" style="color:{% if p.xap != null and p.xap > 0 %}#00ff87{% elif p.xap != null and p.xap < 0 %}#f87171{% elif fs == 'xap' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
+            {% if p.xap != null %}{{ p.xap.toFixed(2) }}{% else %}—{% endif %}
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ '#00ff87' if p.xgip and p.xgip > 0 else ('#f87171' if p.xgip and p.xgip < 0 else (_h if fs == 'xgip' else _t)) }};">
-            {{ '%.2f'|format(p.xgip) if p.xgip is not none else '—' }}
+          <td class="text-right px-2 stat-num" style="color:{% if p.xgip != null and p.xgip > 0 %}#00ff87{% elif p.xgip != null and p.xgip < 0 %}#f87171{% elif fs == 'xgip' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
+            {% if p.xgip != null %}{{ p.xgip.toFixed(2) }}{% else %}—{% endif %}
           </td>
-          <td class="text-right px-2" style="color:{{ _h if fs == 'influence' else _t }};">
+          <td class="text-right px-2" style="color:{% if fs == 'influence' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.influence or '0.0' }}
           </td>
-          <td class="text-right px-2" style="color:{{ _h if fs == 'creativity' else _t }};">
+          <td class="text-right px-2" style="color:{% if fs == 'creativity' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.creativity or '0.0' }}
           </td>
-          <td class="text-right px-2" style="color:{{ _h if fs == 'threat' else _t }};">
+          <td class="text-right px-2" style="color:{% if fs == 'threat' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.threat or '0.0' }}
           </td>
-          <td class="text-right px-2" style="color:{{ _h if fs == 'ict_index' else _t }};">
+          <td class="text-right px-2" style="color:{% if fs == 'ict_index' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.ict_index or '0.0' }}
           </td>
-          <td class="text-right px-2" style="color:{{ _h if fs == 'form' else _t }};">
+          <td class="text-right px-2" style="color:{% if fs == 'form' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.form or '0.0' }}
           </td>
-          <td class="text-right px-2" style="color:{{ _h if fs == 'selected_by_percent' else _t }};">
+          <td class="text-right px-2" style="color:{% if fs == 'selected_by_percent' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.selected_by_percent or '0.0' }}%
           </td>
-          <td class="text-right px-2 stat-num" style="color:{{ _h if fs == 'transfers_in' else _t }};">
+          <td class="text-right px-2 stat-num" style="color:{% if fs == 'transfers_in' %}{{ _h }}{% else %}{{ _t }}{% endif %};">
             {{ p.transfers_in or 0 }}
           </td>
         </tr>
@@ -471,28 +488,40 @@
 
   <!-- Pagination -->
   {% if total_pages > 1 %}
-  <div class="flex items-center justify-center gap-2">
+  {% set start_page = page - 2 %}
+  {% if start_page < 1 %}{% set start_page = 1 %}{% endif %}
+  {% set end_page = page + 3 %}
+  {% if end_page > total_pages + 1 %}{% set end_page = total_pages + 1 %}{% endif %}
+  <form method="get" class="flex items-center justify-center gap-2">
+    {% if filter_pos != null %}<input type="hidden" name="pos" value="{{ filter_pos }}" />{% endif %}
+    {% if filter_team != null %}<input type="hidden" name="team" value="{{ filter_team }}" />{% endif %}
+    {% if filter_status %}<input type="hidden" name="status" value="{{ filter_status }}" />{% endif %}
+    {% if filter_min_cost != null %}<input type="hidden" name="min_cost" value="{{ filter_min_cost }}" />{% endif %}
+    {% if filter_max_cost != null %}<input type="hidden" name="max_cost" value="{{ filter_max_cost }}" />{% endif %}
+    {% if filter_gw_start != null %}<input type="hidden" name="gw_start" value="{{ filter_gw_start }}" />{% endif %}
+    {% if filter_gw_end != null %}<input type="hidden" name="gw_end" value="{{ filter_gw_end }}" />{% endif %}
+    <input type="hidden" name="sort" value="{{ filter_sort or 'total_points' }}" />
+    <input type="hidden" name="order" value="{{ filter_order or 'desc' }}" />
+
     {% if page > 1 %}
-    <a href="?{{ request.query_params | replace('page=' ~ page, 'page=' ~ (page-1)) if 'page=' in request.query_params.__str__() else request.query_params.__str__() ~ '&page=' ~ (page-1) }}"
-       class="page-btn">←</a>
+    <button type="submit" name="page" value="{{ page - 1 }}" class="page-btn">←</button>
     {% else %}
     <span class="page-btn disabled">←</span>
     {% endif %}
 
-    {% for p_num in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
-    <a href="?{{ request.query_params | replace('page=' ~ page, 'page=' ~ p_num) if 'page=' in request.query_params.__str__() else request.query_params.__str__() ~ '&page=' ~ p_num }}"
-       class="page-btn {% if p_num == page %}active{% endif %}">
+    {% for p_num in range(start_page, end_page) %}
+    <button type="submit" name="page" value="{{ p_num }}"
+            class="page-btn {% if p_num == page %}active{% endif %}">
       {{ p_num }}
-    </a>
+    </button>
     {% endfor %}
 
     {% if page < total_pages %}
-    <a href="?{{ request.query_params | replace('page=' ~ page, 'page=' ~ (page+1)) if 'page=' in request.query_params.__str__() else request.query_params.__str__() ~ '&page=' ~ (page+1) }}"
-       class="page-btn">→</a>
+    <button type="submit" name="page" value="{{ page + 1 }}" class="page-btn">→</button>
     {% else %}
     <span class="page-btn disabled">→</span>
     {% endif %}
-  </div>
+  </form>
   {% endif %}
 
 </div>

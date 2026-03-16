@@ -36,7 +36,7 @@
     <div class="card p-5">
       <p class="text-xs font-semibold uppercase tracking-widest mb-1" style="color:#64748b;">Transfers Made</p>
       <p class="text-3xl font-bold stat-num" style="color:#e2e8f0;">
-        {% if gw.transfers_made %}{{ '{:,}'.format(gw.transfers_made) }}{% else %}—{% endif %}
+        {% if gw.transfers_made %}{{ gw.transfers_made.toLocaleString() }}{% else %}—{% endif %}
       </p>
       <p class="text-xs mt-1" style="color:#64748b;">this gameweek</p>
     </div>
@@ -52,7 +52,7 @@
           <span style="color:#64748b;">Upcoming</span>
         {% endif %}
       </p>
-      <p class="text-xs mt-1" style="color:#64748b;">{{ gw.deadline_time[:10] if gw.deadline_time else '—' }}</p>
+      <p class="text-xs mt-1" style="color:#64748b;">{% if gw.deadline_time %}{{ gw.deadline_time.slice(0, 10) }}{% else %}—{% endif %}</p>
     </div>
 
   </div>
@@ -190,7 +190,7 @@
     </div>
     <div style="color:#94a3b8;">
       Last scrape · <strong style="color:#e2e8f0;">{{ sc.mode }}</strong> mode ·
-      started {{ sc.started_at[:19].replace('T', ' ') if sc.started_at else '?' }}
+      started {% if sc.started_at %}{{ sc.started_at.slice(0, 19) | replace('T', ' ') }}{% else %}?{% endif %}
       {% if sc.players_scraped %} · {{ sc.players_scraped }} players{% endif %}
     </div>
   </div>
