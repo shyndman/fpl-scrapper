@@ -32,12 +32,12 @@
       <!-- Strength bars -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {% set strength_bars = [
-          ('Overall Home', team.strength_overall_home),
-          ('Overall Away', team.strength_overall_away),
-          ('Attack Home', team.strength_attack_home),
-          ('Attack Away', team.strength_attack_away),
-          ('Defence Home', team.strength_defence_home),
-          ('Defence Away', team.strength_defence_away),
+          ['Overall Home', team.strength_overall_home],
+          ['Overall Away', team.strength_overall_away],
+          ['Attack Home', team.strength_attack_home],
+          ['Attack Away', team.strength_attack_away],
+          ['Defence Home', team.strength_defence_home],
+          ['Defence Away', team.strength_defence_away]
         ] %}
         {% for label, val in strength_bars %}
         <div>
@@ -72,8 +72,15 @@
         </p>
         <p class="font-bold text-sm">{{ fix.opponent_short }}</p>
         <p class="text-xs mt-1" style="color:#64748b;">{{ '(H)' if fix.is_home else '(A)' }}</p>
-        <div class="mt-2 px-2 py-0.5 rounded text-xs font-bold fdr-{{ fix.my_difficulty or 3 }}">
-          {{ ['', 'EASY', 'EASY', 'MED', 'HARD', 'HARD'][fix.my_difficulty or 3] }}
+        {% set difficulty = fix.my_difficulty or 3 %}
+        <div class="mt-2 px-2 py-0.5 rounded text-xs font-bold fdr-{{ difficulty }}">
+          {% if difficulty <= 2 %}
+          EASY
+          {% elif difficulty == 3 %}
+          MED
+          {% else %}
+          HARD
+          {% endif %}
         </div>
       </div>
       {% endfor %}
@@ -84,7 +91,7 @@
   <!-- Squad by position -->
   <div>
     <h2 class="text-lg font-bold mb-4">Squad</h2>
-    {% set position_groups = [(1,'Goalkeepers'),(2,'Defenders'),(3,'Midfielders'),(4,'Forwards')] %}
+    {% set position_groups = [[1, 'Goalkeepers'], [2, 'Defenders'], [3, 'Midfielders'], [4, 'Forwards']] %}
     {% for pos_id, pos_label in position_groups %}
     {% set pos_players = squad | selectattr('element_type', 'equalto', pos_id) | list %}
     {% if pos_players %}
@@ -103,8 +110,15 @@
                  class="w-14 h-[72px] object-cover object-top rounded"
                  onerror="this.src='/static/images/placeholder_player.png'" />
             {% if p.status and p.status != 'a' %}
+            {% if p.status == 'd' %}
+            {% set status_dot_class = 'doubt' %}
+            {% elif p.status == 'i' %}
+            {% set status_dot_class = 'injured' %}
+            {% else %}
+            {% set status_dot_class = 'suspended' %}
+            {% endif %}
             <span class="absolute -top-1 -right-1 status-dot
-                   {{ 'doubt' if p.status == 'd' else 'injured' if p.status == 'i' else 'suspended' }}"
+                   {{ status_dot_class }}"
                   title="{{ p.status | status_label }}"></span>
             {% endif %}
           </div>
@@ -124,7 +138,7 @@
 
 {% block scripts %}
 <script>
-const team = {{ team | tojson }};
+const team = {{ team | dump | safe }};
 createRadarChart('strengthRadar',
   ['Ovr H', 'Ovr A', 'Att H', 'Att A', 'Def H', 'Def A'],
   [{

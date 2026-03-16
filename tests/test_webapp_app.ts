@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const runtime = vi.hoisted(() => ({
@@ -22,6 +25,14 @@ const APPS: Array<{ close: () => Promise<unknown> }> = [];
 async function importAppModule() {
   vi.resetModules();
   return import("../webapp/app.ts");
+}
+
+function normalizeTemplateForStandaloneRender(source: string): string {
+  return source
+    .replace('{% extends "base.html" %}\n\n', "")
+    .replaceAll("{% block content %}", "")
+    .replaceAll("{% block scripts %}", "")
+    .replaceAll("{% endblock %}", "");
 }
 
 beforeEach(() => {
@@ -82,6 +93,96 @@ describe("webapp/app.ts", () => {
     await app.ready();
     expect(app.hasReplyDecorator("view")).toBe(true);
     expect(app.hasReplyDecorator("sendFile")).toBe(true);
+  });
+
+  it("renders the translated team templates with the configured nunjucks environment", async () => {
+    const appModule = await importAppModule();
+    const app = appModule.createApp("/tmp/explicit.db");
+    APPS.push(app);
+
+    const templateEnv = appModule.getTemplates() as unknown as {
+      renderString: (source: string, context: Record<string, unknown>) => string;
+    };
+    const renderTemplate = (name: string, context: Record<string, unknown>): string => {
+      const source = readFileSync(join(appModule._TEMPLATES_DIR, name), "utf8");
+      return templateEnv.renderString(
+        normalizeTemplateForStandaloneRender(source),
+        context,
+      );
+    };
+
+    expect(
+      renderTemplate("teams.html", {
+        teams: [
+          {
+            fpl_id: 1,
+            name: "Arsenal",
+            short_name: "ARS",
+            wins: 20,
+            draws: 3,
+            losses: 2,
+            strength: 4,
+            strength_attack_home: 1200,
+            strength_attack_away: 1180,
+            strength_defence_home: 1150,
+            strength_defence_away: 1140,
+            team_xg: 25.4,
+            team_xa: 18.7,
+            team_xgi: 44.1,
+            team_xgp: 1.2,
+            team_xap: -0.4,
+            team_xgip: 0,
+          },
+        ],
+      }),
+    ).toContain("+1.2");
+
+    const teamDetailHtml = renderTemplate("team_detail.html", {
+      team: {
+        fpl_id: 1,
+        name: "Arsenal",
+        short_name: "ARS",
+        strength_overall_home: 1300,
+        strength_overall_away: 1280,
+        strength_attack_home: 1260,
+        strength_attack_away: 1240,
+        strength_defence_home: 1220,
+        strength_defence_away: 1210,
+      },
+      fixtures: [
+        {
+          gameweek_fpl_id: 30,
+          opponent_short: "CHE",
+          is_home: true,
+          my_difficulty: 2,
+        },
+      ],
+      squad: [
+        {
+          fpl_id: 11,
+          code: 111,
+          web_name: "Raya",
+          element_type: 1,
+          status: "a",
+          total_points: 120,
+          now_cost: 55,
+        },
+        {
+          fpl_id: 12,
+          code: 112,
+          web_name: "Gabriel",
+          element_type: 2,
+          status: "d",
+          total_points: 110,
+          now_cost: 63,
+        },
+      ],
+    });
+    expect(teamDetailHtml).toContain("EASY");
+    expect(teamDetailHtml).toContain("status-dot");
+    expect(teamDetailHtml).toContain("const team = {");
+
+    expect(renderTemplate("compare.html", {})).toContain("function compareApp()");
   });
 
   it("prefers an explicit db path, then env, then the default path", async () => {

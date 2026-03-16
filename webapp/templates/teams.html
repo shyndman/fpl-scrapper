@@ -55,10 +55,10 @@
       <!-- Strength detail -->
       <div class="w-full grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
         {% set strength_items = [
-          ('Att H', team.strength_attack_home),
-          ('Att A', team.strength_attack_away),
-          ('Def H', team.strength_defence_home),
-          ('Def A', team.strength_defence_away),
+          ['Att H', team.strength_attack_home],
+          ['Att A', team.strength_attack_away],
+          ['Def H', team.strength_defence_home],
+          ['Def A', team.strength_defence_away]
         ] %}
         {% for label, val in strength_items %}
         <div class="flex justify-between">
@@ -71,22 +71,28 @@
       <!-- xG / xA / xGI ─ expected stats (always non-negative) -->
       <div class="w-full border-t pt-2" style="border-color:#1e2d4a;">
         <div class="grid grid-cols-3 text-xs text-center gap-1 mb-2">
-          {% for label, val in [('xG', team.team_xg), ('xA', team.team_xa), ('xGI', team.team_xgi)] %}
+          {% for label, val in [['xG', team.team_xg], ['xA', team.team_xa], ['xGI', team.team_xgi]] %}
           <div>
             <p style="color:#64748b;">{{ label }}</p>
-            <p class="font-semibold stat-num" style="color:#e2e8f0;">{{ '%.1f'|format(val or 0) }}</p>
+            <p class="font-semibold stat-num" style="color:#e2e8f0;">{{ (val or 0).toFixed(1) }}</p>
           </div>
           {% endfor %}
         </div>
 
         <!-- xGP / xAP / xGIP ─ performance vs expected (green +, red -) -->
         <div class="grid grid-cols-3 text-xs text-center gap-1">
-          {% for label, val in [('xGP', team.team_xgp), ('xAP', team.team_xap), ('xGIP', team.team_xgip)] %}
-          {% set color = '#00ff87' if val and val > 0 else ('#f87171' if val and val < 0 else '#64748b') %}
+          {% for label, val in [['xGP', team.team_xgp], ['xAP', team.team_xap], ['xGIP', team.team_xgip]] %}
+          {% if val and val > 0 %}
+          {% set color = '#00ff87' %}
+          {% elif val and val < 0 %}
+          {% set color = '#f87171' %}
+          {% else %}
+          {% set color = '#64748b' %}
+          {% endif %}
           <div>
             <p style="color:#64748b;">{{ label }}</p>
             <p class="font-semibold stat-num" style="color:{{ color }};">
-              {{ '%+.1f'|format(val or 0) }}
+              {% if (val or 0) > 0 %}+{% endif %}{{ (val or 0).toFixed(1) }}
             </p>
           </div>
           {% endfor %}
