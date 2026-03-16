@@ -27,14 +27,14 @@ The webapp gives you a visual, browser-based interface to the `data/fpl.db` data
 
 **Six pages:**
 
-| Page | URL | What you can do |
-|---|---|---|
-| Dashboard | `/` | See the current gameweek's top performers, summary stats, all 20 teams at a glance, and the last scrape status |
-| Players | `/players` | Browse all ~700+ players in a card grid; filter by position, team, status (available/injured/doubt), and price range; sort by any stat |
-| Player detail | `/players/{id}` | Full profile for one player — photo, season stats, gameweek-by-gameweek points chart, ICT radar, price history, past-season table |
-| Teams | `/teams` | All 20 clubs with badges, win/draw/loss record, and strength ratings |
-| Team detail | `/teams/{id}` | Full squad sorted by position, strength radar chart, next 8 fixtures with difficulty colour coding |
-| Compare | `/compare` | Type-ahead search for up to 5 players or teams, pick any combination of stats, view as line chart (per GW), bar chart (season total), or radar chart |
+| Page          | URL             | What you can do                                                                                                                                      |
+| ------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard     | `/`             | See the current gameweek's top performers, summary stats, all 20 teams at a glance, and the last scrape status                                       |
+| Players       | `/players`      | Browse all ~700+ players in a card grid; filter by position, team, status (available/injured/doubt), and price range; sort by any stat               |
+| Player detail | `/players/{id}` | Full profile for one player — photo, season stats, gameweek-by-gameweek points chart, ICT radar, price history, past-season table                    |
+| Teams         | `/teams`        | All 20 clubs with badges, win/draw/loss record, and strength ratings                                                                                 |
+| Team detail   | `/teams/{id}`   | Full squad sorted by position, strength radar chart, next 8 fixtures with difficulty colour coding                                                   |
+| Compare       | `/compare`      | Type-ahead search for up to 5 players or teams, pick any combination of stats, view as line chart (per GW), bar chart (season total), or radar chart |
 
 Player photos and team badges are downloaded from the FPL image CDN the first time the server starts, and served locally. Subsequent startups skip files that already exist.
 
@@ -43,19 +43,20 @@ Player photos and team badges are downloaded from the FPL image CDN the first ti
 ## 2. How it works — architecture overview
 
 ```
-Browser  ←──HTML/CSS/JS──  FastAPI (Jinja2 templates)  ←──SQL──  SQLite (data/fpl.db)
-   │                                │
+Browser  ←──HTML/CSS/JS──  Fastify (Nunjucks templates)  ←──SQL──  SQLite (data/fpl.db)
+   │                                 │
    └──JSON fetch (Alpine.js)──  /api/* routes  ←──SQL──  SQLite
 ```
 
-**Server side (Python):**
+**Server side (TypeScript on Node.js):**
 
-- **FastAPI** is the web framework. It handles routing and renders HTML using Jinja2 templates.
-- **Uvicorn** is the ASGI server that runs FastAPI. It listens on `127.0.0.1:8000`.
-- **`webapp/db.py`** opens a thread-local, read-only SQLite connection and runs all the SQL queries. Results are returned as plain Python dicts. A simple time-based cache (`@ttl_cache`) avoids re-running expensive queries on every page load.
-- **`webapp/images.py`** downloads player photos and team badges from the FPL CDN into `webapp/static/images/` at startup. It runs as a background task so it does not delay the server from accepting connections.
-- **`webapp/routers/pages.py`** contains the HTML-rendering routes — one function per page.
-- **`webapp/routers/api.py`** contains the JSON routes used by the compare page's charts and search typeahead.
+- **Fastify** is the web framework. It serves HTML pages, JSON APIs, and the local static assets under `/static/`.
+- **Nunjucks** renders the templates in `webapp/templates/` via `@fastify/view`.
+- **`webapp/server.ts`** is the runtime entrypoint. It starts the Fastify app on `127.0.0.1:8292` by default.
+- **`webapp/db.ts`** opens read-only Better SQLite 3 connections, runs all SQL queries, and keeps a small in-memory TTL cache for expensive reads.
+- **`webapp/images.ts`** downloads player photos and team badges from the FPL CDN into `webapp/static/images/` at startup. It runs in the background so the server can accept requests immediately.
+- **`webapp/routers/pages.ts`** contains the HTML-rendering routes — one function per page.
+- **`webapp/routers/api.ts`** contains the JSON routes used by the compare page's charts and search typeahead.
 
 **Client side (browser):**
 
@@ -73,20 +74,16 @@ The design follows a dark-navy aesthetic matching FPL's own app, using `#0a0e1a`
 webapp/
 │
 ├── README.md               ← You are here
-├── requirements.txt        ← Python dependencies for the webapp only
-│
-├── __init__.py             ← Makes 'webapp' a Python package
-├── __main__.py             ← Entry point: python -m webapp
-├── app.py                  ← FastAPI app factory, lifespan, Jinja2 filters
-├── db.py                   ← Database queries, thread-local connections, TTL cache
-├── images.py               ← Downloads and serves player photos + team badges
+├── server.ts               ← Entry point used by `npm run web`
+├── app.ts                  ← Fastify app factory, startup hooks, Nunjucks filters/globals
+├── db.ts                   ← Database queries, read-only connections, TTL cache
+├── images.ts               ← Downloads and serves player photos + team badges
 │
 ├── routers/
-│   ├── __init__.py
-│   ├── pages.py            ← HTML page routes (one function per page)
-│   └── api.py              ← JSON API routes (used by charts and typeahead)
+│   ├── pages.ts            ← HTML page routes (one function per page)
+│   └── api.ts              ← JSON API routes (used by charts and typeahead)
 │
-├── templates/              ← Jinja2 HTML templates
+├── templates/              ← Nunjucks HTML templates
 │   ├── base.html           ← Shared layout: nav, CDN scripts, footer
 │   ├── dashboard.html      ← Home page
 │   ├── players.html        ← Player grid with filters
@@ -109,43 +106,36 @@ webapp/
 
 **The files you are most likely to edit:**
 
-| File | Why you'd edit it |
-|---|---|
-| `webapp/db.py` | Add a new SQL query or change what data a page receives |
-| `webapp/templates/*.html` | Change the layout, add a new section, or tweak the design |
-| `webapp/static/css/app.css` | Change colours, spacing, or card styles |
-| `webapp/static/js/charts.js` | Change how charts look or add a new chart type |
-| `webapp/routers/pages.py` | Add a new page route |
-| `webapp/routers/api.py` | Add a new JSON endpoint |
+| File                         | Why you'd edit it                                         |
+| ---------------------------- | --------------------------------------------------------- |
+| `webapp/db.ts`               | Add a new SQL query or change what data a page receives   |
+| `webapp/templates/*.html`    | Change the layout, add a new section, or tweak the design |
+| `webapp/static/css/app.css`  | Change colours, spacing, or card styles                   |
+| `webapp/static/js/charts.js` | Change how charts look or add a new chart type            |
+| `webapp/routers/pages.ts`    | Add a new page route                                      |
+| `webapp/routers/api.ts`      | Add a new JSON endpoint                                   |
 
 ---
 
 ## 4. Installation
 
-The webapp has its own set of Python dependencies that are separate from the scraper. Install them into the same virtual environment.
+The webapp ships in the same Node/TypeScript package as the scraper. There is no separate Python environment and no frontend build pipeline.
 
-**Step 1: Activate your virtual environment** (if it is not already active)
+From the project root:
 
 ```bash
 cd /path/to/fpl-web-scrapper
-source .venv/bin/activate      # macOS / Linux
-# .venv\Scripts\activate       # Windows
+npm install
 ```
 
-**Step 2: Install webapp dependencies**
+That installs the shared runtime and tooling for both the CLI scraper and the web UI:
 
-```bash
-pip install -r webapp/requirements.txt
-```
+- `fastify`, `@fastify/view`, and `@fastify/static` for the server shell
+- `nunjucks` for template rendering
+- `better-sqlite3` for read-only dashboard queries
+- `tsx`, `typescript`, `vitest`, `eslint`, and `prettier` for development
 
-This installs:
-- `fastapi` — the web framework
-- `uvicorn[standard]` — the ASGI server
-- `jinja2` — the HTML templating engine
-- `aiofiles` — async file serving for static assets
-- `requests` and `python-dotenv` — shared with the scraper, already installed
-
-**That's it.** No build step, no npm, no webpack. All CSS and JavaScript libraries load from CDNs.
+There is still no frontend build step. Tailwind CSS, Alpine.js, and Chart.js are loaded from CDNs at runtime.
 
 ---
 
@@ -154,20 +144,20 @@ This installs:
 From the project root (the `fpl-web-scrapper/` directory, not inside `webapp/`):
 
 ```bash
-python -m webapp
+npm run web
 ```
 
-You should see:
+The server listens on **http://127.0.0.1:8292** by default.
+
+Typical startup logs look like:
 
 ```
 18:00:01  INFO      webapp.app  Configuring database: /path/to/fpl-web-scrapper/data/fpl.db
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 18:00:01  INFO      webapp.images  Player photos: 0 downloaded, 820 skipped, 0 failed
 18:00:02  INFO      webapp.images  Team badges: 0 downloaded, 20 skipped, 0 failed
 ```
 
-Then open **http://127.0.0.1:8000** in your browser.
+Then open **http://127.0.0.1:8292** in your browser.
 
 **First startup:** The image download will log progress in the background. The webapp is fully functional while images are downloading — pages with missing photos show a placeholder automatically.
 
@@ -178,15 +168,17 @@ Then open **http://127.0.0.1:8000** in your browser.
 By default the webapp looks for the database at `data/fpl.db` relative to the project root. To point it at a different file:
 
 ```bash
-FPL_DB_PATH=/absolute/path/to/other.db python -m webapp
+FPL_DB_PATH=/absolute/path/to/other.db npm run web
 ```
 
 ### Changing the port
 
-Edit `webapp/__main__.py` and change `port=8000` to any free port:
+The default port lives in `webapp/server.ts` as `DEFAULT_PORT = 8292`. If you want a different default, change that constant.
 
-```python
-uvicorn.run("webapp.__main__:app", host="127.0.0.1", port=9000, ...)
+For a one-off custom port without editing code, launch the exported helper through `tsx`:
+
+```bash
+node --input-type=module --import tsx -e "import { app, launch } from './webapp/server.ts'; console.log(await launch(app, { port: 9000 }));"
 ```
 
 ---
@@ -196,6 +188,7 @@ uvicorn.run("webapp.__main__:app", host="127.0.0.1", port=9000, ...)
 ### Dashboard (`/`)
 
 Loaded on startup. Shows:
+
 - **GW summary strip** — average score, highest score, total transfers made, and current GW status (Live / Finished / Upcoming). Data comes from the `gameweeks` table.
 - **Top performers table** — the 10 highest-scoring players in the current gameweek, with their photos, team badges, and stats. Sourced from `player_history` joined to `players`.
 - **Teams grid** — all 20 clubs with their badges and overall strength rating. Click any card to go to that team's detail page.
@@ -204,6 +197,7 @@ Loaded on startup. Shows:
 ### Players (`/players`)
 
 Shows all players in a paginated card grid (40 per page). You can:
+
 - **Filter by position** — GK / DEF / MID / FWD (or All)
 - **Filter by availability** — Available / Doubt / Injured (or All)
 - **Filter by team** — dropdown of all 20 clubs
@@ -216,6 +210,7 @@ All filters are URL query parameters, so filtered views are bookmarkable and sha
 ### Player detail (`/players/{fpl_id}`)
 
 A full profile page for one player. Includes:
+
 - **Hero card** — large photo, full name, position pill, status indicator (green dot = available, yellow = doubt, red = injured), team badge, and quick stats
 - **Stat cards row** — goals, assists, clean sheets, minutes, bonus, yellow cards, red cards, saves for the season
 - **Points per GW line chart** — three overlaid lines: total points (green), goals (orange), assists (blue). X-axis is gameweek number.
@@ -231,6 +226,7 @@ A 5-wide grid of all 20 clubs, each showing badge, name, win/draw/loss record, a
 ### Team detail (`/teams/{fpl_id}`)
 
 A full profile for one club. Includes:
+
 - **Strength bars** — six dimensions: overall home/away, attack home/away, defence home/away. The values are FPL's internal strength ratings (roughly 900–1400).
 - **Strength radar chart** — all six dimensions plotted on a single radar, making it easy to see if a team is strong at home but weak away, or attack-heavy vs. defence-heavy.
 - **Upcoming fixtures strip** — the next 8 fixtures with opponent name, home/away flag, and a colour-coded difficulty badge (green = easy, red = hard, based on `team_h_difficulty` / `team_a_difficulty` from the `fixtures` table).
@@ -241,6 +237,7 @@ A full profile for one club. Includes:
 A fully interactive comparison tool powered by Alpine.js and the JSON API.
 
 **How to use it:**
+
 1. Choose **Players** or **Teams** with the type toggle
 2. Type any player's name in the search box — a dropdown of matching results appears. Click to add them. Add up to 5 entities.
 3. Click any **metric pill** to add or remove it from the comparison (defaults: Total Points, Goals, Assists)
@@ -248,6 +245,7 @@ A fully interactive comparison tool powered by Alpine.js and the JSON API.
 5. Scroll down to see the **Season Summary** table — a grid of all selected entities × all selected metrics
 
 You can also link directly to a pre-populated comparison using URL parameters:
+
 ```
 /compare?ids=430,328&type=player
 ```
@@ -260,35 +258,35 @@ Available metrics: Total Points, Goals, Assists, Clean Sheets, Minutes, Form, Pr
 
 The webapp exposes a set of JSON endpoints under `/api/`. These are used by the compare page and the search typeahead, but you can also call them directly from a browser, curl, or any other HTTP client.
 
-| Endpoint | What it returns |
-|---|---|
-| `GET /api/overview` | Dashboard summary — current GW, top 10 players, player/team counts, last scrape |
-| `GET /api/gameweeks` | All 38 gameweeks with `is_current` / `is_next` / `is_finished` flags |
-| `GET /api/players` | Filtered player list. Query params: `pos`, `team`, `status`, `min_cost`, `max_cost`, `sort`, `order`, `page`, `per_page` |
-| `GET /api/players/{id}` | A single player with `photo_url` and `badge_url` added |
-| `GET /api/players/{id}/history` | All `player_history` rows for this player, sorted by GW |
-| `GET /api/teams` | All 20 teams with win/draw/loss stats and `badge_url` added |
-| `GET /api/teams/{id}` | Single team with squad and next 10 fixtures |
-| `GET /api/search?q=Salah&type=player` | Typeahead — up to 10 matching players or teams |
-| `GET /api/compare?ids=1,2&type=player&metrics=total_points,goals_scored` | Comparison data — season totals and per-GW datasets ready for Chart.js |
+| Endpoint                                                                 | What it returns                                                                                                          |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/overview`                                                      | Dashboard summary — current GW, top 10 players, player/team counts, last scrape                                          |
+| `GET /api/gameweeks`                                                     | All 38 gameweeks with `is_current` / `is_next` / `is_finished` flags                                                     |
+| `GET /api/players`                                                       | Filtered player list. Query params: `pos`, `team`, `status`, `min_cost`, `max_cost`, `sort`, `order`, `page`, `per_page` |
+| `GET /api/players/{id}`                                                  | A single player with `photo_url` and `badge_url` added                                                                   |
+| `GET /api/players/{id}/history`                                          | All `player_history` rows for this player, sorted by GW                                                                  |
+| `GET /api/teams`                                                         | All 20 teams with win/draw/loss stats and `badge_url` added                                                              |
+| `GET /api/teams/{id}`                                                    | Single team with squad and next 10 fixtures                                                                              |
+| `GET /api/search?q=Salah&type=player`                                    | Typeahead — up to 10 matching players or teams                                                                           |
+| `GET /api/compare?ids=1,2&type=player&metrics=total_points,goals_scored` | Comparison data — season totals and per-GW datasets ready for Chart.js                                                   |
 
 **Example calls:**
 
 ```bash
 # Get overview
-curl http://127.0.0.1:8000/api/overview | python3 -m json.tool
+curl http://127.0.0.1:8292/api/overview | python3 -m json.tool
 
 # Find Haaland's fpl_id
-curl "http://127.0.0.1:8000/api/search?q=Haaland&type=player"
+curl "http://127.0.0.1:8292/api/search?q=Haaland&type=player"
 
 # Get Haaland's full profile
-curl http://127.0.0.1:8000/api/players/430
+curl http://127.0.0.1:8292/api/players/430
 
 # Get Haaland's GW-by-GW history
-curl http://127.0.0.1:8000/api/players/430/history
+curl http://127.0.0.1:8292/api/players/430/history
 
 # Compare Haaland and Salah on goals and xG
-curl "http://127.0.0.1:8000/api/compare?ids=430,308&type=player&metrics=goals_scored,expected_goals"
+curl "http://127.0.0.1:8292/api/compare?ids=430,308&type=player&metrics=goals_scored,expected_goals"
 ```
 
 ---
@@ -301,11 +299,11 @@ Understanding this makes it easy to trace any problem or add new features.
 
 ```
 1. User navigates to /players?pos=3&sort=form
-2. FastAPI calls pages.py → players()
-3. players() calls db.get_players(pos=3, sort='form', ...) in db.py
-4. db.py runs a SELECT on the open SQLite connection and returns list[dict]
-5. pages.py passes the list to Jinja2: templates.TemplateResponse("players.html", {...})
-6. Jinja2 renders the HTML template, inserting the player data
+2. Fastify calls `pageRoutes` in `webapp/routers/pages.ts`
+3. The route handler calls `webappDb.getPlayers({ pos: 3, sort: "form", ... })` in `webapp/db.ts`
+4. `db.ts` runs a SELECT on the read-only SQLite connection and returns plain objects
+5. The route calls `reply.view("players.html", {...})`
+6. Nunjucks renders the HTML template, inserting the player data
 7. The fully-rendered HTML page is sent to the browser
 8. The browser renders the HTML — no JavaScript required for the core content
 9. Alpine.js and Chart.js enhance the page (filters, charts) after load
@@ -316,21 +314,22 @@ Understanding this makes it easy to trace any problem or add new features.
 ```
 1. User navigates to /compare — an empty Alpine.js component loads
 2. User types "Haaland" → Alpine calls GET /api/search?q=Haaland
-3. api.py → search() queries the DB, returns [{id:430, label:"Haaland", ...}]
+3. `webapp/routers/api.ts` queries the DB and returns `[{ id: 430, label: "Haaland", ... }]`
 4. User clicks Haaland → entity added to selectedEntities array
 5. Alpine calls GET /api/compare?ids=430&type=player&metrics=total_points,...
-6. api.py queries player_history for all gameweeks, builds Chart.js-ready datasets
+6. `api.ts` queries `player_history` for all gameweeks and builds Chart.js-ready datasets
 7. Alpine receives the JSON, calls createLineChart() in charts.js
 8. Chart.js renders animated line charts directly on the canvas elements
 ```
 
 ### TTL cache behaviour
 
-`db.py` uses a simple in-memory cache with a time-to-live. Stable data (teams, gameweeks) is cached for 5 minutes; player lists for 30 seconds. The cache is per-process and not shared across uvicorn workers.
+`db.ts` uses a simple in-memory cache with a time-to-live. Stable data (teams, gameweeks) is cached for 5 minutes; player lists for 30 seconds. The cache is per-process and not shared across Node processes.
 
 If you've just run the scraper and the webapp is showing stale data, either:
+
 - Wait for the cache to expire (max 5 minutes), or
-- Restart the webapp: `Ctrl+C` then `python -m webapp`
+- Restart the webapp: `Ctrl+C` then `npm run web`
 
 ---
 
@@ -340,49 +339,58 @@ If you've just run the scraper and the webapp is showing stale data, either:
 
 **"Address already in use"**
 
-Port 8000 is already occupied. Either stop the other process or change the port in `webapp/__main__.py`.
+Port 8292 is already occupied. Either stop the other process or use the custom-port `tsx` command from the running section above.
 
-**"No module named 'fastapi'"**
+**"Cannot find package 'fastify'"** (or another dependency import error)
 
 Dependencies aren't installed. Run:
+
 ```bash
-pip install -r webapp/requirements.txt
+npm install
 ```
 
 **"Could not read DB for image download"**
 
 The scraper hasn't run yet, or `data/fpl.db` is in an unexpected location. Check the path:
+
 ```bash
 ls -lh data/fpl.db
 ```
+
 Or override it:
+
 ```bash
-FPL_DB_PATH=/absolute/path/to/fpl.db python -m webapp
+FPL_DB_PATH=/absolute/path/to/fpl.db npm run web
 ```
 
-**"RuntimeError: DB path not configured"**
+**"Error: DB path not configured - call configure(path) first"**
 
-`db.configure()` wasn't called before a query was attempted. This should not happen in normal use — it indicates the app factory wasn't called correctly. Make sure you're running `python -m webapp` from the project root, not from inside the `webapp/` directory.
+`webappDb.configure()` wasn't called before a query was attempted. This should not happen in normal use — it indicates the app factory wasn't called correctly. Make sure you're running `npm run web` from the project root, not ad-hoc imports from inside `webapp/`.
 
 ### Page shows an error in the browser
 
 **500 Internal Server Error**
 
-FastAPI's default error page shows a generic message. To see the full traceback, run the webapp with Python's verbose output:
+Fastify writes the stack trace to the terminal that started the server. Re-run it in the foreground:
+
 ```bash
-python -m webapp
+npm run web
 ```
+
 The traceback will be printed to the terminal. Look for lines starting with `ERROR` or `Exception`.
 
-For even more detail, enable debug mode by temporarily editing `webapp/__main__.py`:
-```python
-uvicorn.run("webapp.__main__:app", host="127.0.0.1", port=8000, reload=True, log_level="debug")
+For even more detail, launch with the exported helper and a louder log level:
+
+```bash
+node --input-type=module --import tsx -e "import { app, launch } from './webapp/server.ts'; console.log(await launch(app, { logLevel: 'DEBUG' }));"
 ```
-`reload=True` also makes the server automatically restart when you save any Python file — useful during development.
+
+There is no built-in reload mode wired into the repo scripts right now, so restart the process manually after each code change.
 
 **404 Not Found on `/players/123`**
 
 The player with `fpl_id = 123` doesn't exist in the database, or hasn't been scraped yet. Check with:
+
 ```bash
 sqlite3 data/fpl.db "SELECT fpl_id, web_name FROM players WHERE fpl_id = 123;"
 ```
@@ -392,6 +400,7 @@ sqlite3 data/fpl.db "SELECT fpl_id, web_name FROM players WHERE fpl_id = 123;"
 Open your browser's developer console (F12 → Console tab) and look for JavaScript errors.
 
 Common causes:
+
 - `Chart is not defined` — the Chart.js CDN failed to load. Check your internet connection.
 - `Cannot read properties of null (reading 'getContext')` — the canvas element ID doesn't match what `charts.js` is trying to find. This usually means an Alpine.js rendering race condition; try a hard refresh (Ctrl+Shift+R).
 - Blank canvas — the data for that chart is genuinely empty. Check the database:
@@ -405,15 +414,18 @@ Common causes:
 Player photos and team badges are stored in `webapp/static/images/players/` and `webapp/static/images/badges/`.
 
 Check if they downloaded:
+
 ```bash
 ls webapp/static/images/players/ | head -10
 ls webapp/static/images/badges/
 ```
 
 If the directories are empty, the download failed silently. Restart the server — the download runs every time and will retry any missing files. If files consistently fail to download, check the error in the terminal logs:
+
 ```
 INFO webapp.images  Player photos: 0 downloaded, 0 skipped, 820 failed
 ```
+
 This usually means the FPL CDN is temporarily unavailable. The webapp will use placeholder images in the meantime.
 
 If a specific player has no photo, their `code` value in the database may be NULL or the CDN doesn't have that photo. Placeholders are shown automatically in that case.
@@ -424,13 +436,14 @@ The webapp caches query results in memory for 30 seconds to 5 minutes. Either wa
 
 ### Adding `print()` statements for debugging
 
-Because the webapp is a regular Python process, you can add `print()` or `logging.debug()` calls anywhere in `app.py`, `db.py`, or the routers, and they will appear in the terminal when the relevant code path runs:
+Because the webapp is a regular Node process, you can add `console.log()` calls anywhere in `app.ts`, `db.ts`, or the routers, and they will appear in the terminal when the relevant code path runs:
 
-```python
-# In webapp/db.py
-def get_player(fpl_id: int) -> dict | None:
-    print(f"[DEBUG] Querying player {fpl_id}")   # ← add this temporarily
-    ...
+```ts
+// In webapp/db.ts
+export const getPlayer = ttlCache("getPlayer", 30, (fplId: number) => {
+  console.log("[DEBUG] Querying player", fplId); // ← add this temporarily
+  // ...
+});
 ```
 
 Remove debug prints before committing.
@@ -442,6 +455,7 @@ While the webapp is running, you can open the database in a second terminal and 
 ```bash
 sqlite3 data/fpl.db
 ```
+
 ```sql
 -- Which player has fpl_id 430?
 SELECT web_name, first_name, second_name FROM players WHERE fpl_id = 430;
@@ -465,14 +479,14 @@ All colour tokens are defined as CSS custom properties at the top of `webapp/sta
 
 ```css
 :root {
-  --bg:       #0a0e1a;   /* page background */
-  --surface:  #0f1729;   /* card background */
-  --border:   #1e2d4a;   /* borders */
-  --accent:   #00ff87;   /* FPL green — primary highlight */
-  --sky:      #38bdf8;   /* sky blue — secondary highlight */
-  --text:     #e2e8f0;   /* primary text */
-  --muted:    #64748b;   /* secondary text */
-  --danger:   #f87171;   /* red — injuries, red cards */
+  --bg: #0a0e1a; /* page background */
+  --surface: #0f1729; /* card background */
+  --border: #1e2d4a; /* borders */
+  --accent: #00ff87; /* FPL green — primary highlight */
+  --sky: #38bdf8; /* sky blue — secondary highlight */
+  --text: #e2e8f0; /* primary text */
+  --muted: #64748b; /* secondary text */
+  --danger: #f87171; /* red — injuries, red cards */
 }
 ```
 
@@ -480,18 +494,21 @@ Change these values and refresh the page. No build step needed.
 
 ### Adding a new page
 
-1. Add a query function in `webapp/db.py` that returns the data you need
-2. Add a route in `webapp/routers/pages.py`:
-   ```python
-   @router.get("/my-new-page")
-   async def my_page(request: Request):
-       data = db.my_query()
-       return _tmpl().TemplateResponse("my_page.html", {"request": request, "data": data})
+1. Add a query function in `webapp/db.ts` that returns the data you need
+2. Add a route in `webapp/routers/pages.ts`:
+   ```ts
+   app.get("/my-new-page", async (request, reply) => {
+     const data = webappDb.myQuery();
+     return reply.view("my_page.html", {
+       request,
+       data,
+       page_title: "My New Page",
+     });
+   });
    ```
 3. Create `webapp/templates/my_page.html` extending `base.html`:
    ```html
-   {% extends "base.html" %}
-   {% block content %}
+   {% extends "base.html" %} {% block content %}
    <div class="py-8">
      <!-- your content here -->
    </div>
@@ -506,16 +523,17 @@ Change these values and refresh the page. No build step needed.
    ```html
    {% block scripts %}
    <script>
-   const data = {{ my_data | tojson }};
-   createBarChart('myChart',
-     data.map(r => r.label),
-     [{ label: 'My Metric', data: data.map(r => r.value) }]
-   );
+     const data = {{ my_data | tojson }};
+     createBarChart('myChart',
+       data.map(r => r.label),
+       [{ label: 'My Metric', data: data.map(r => r.value) }]
+     );
    </script>
    {% endblock %}
    ```
 
 Available factory functions from `webapp/static/js/charts.js`:
+
 - `createLineChart(canvasId, labels, datasets)` — animated line chart
 - `createBarChart(canvasId, labels, datasets, horizontal=false)` — bar chart
 - `createRadarChart(canvasId, labels, datasets)` — radar / spider chart
@@ -523,7 +541,7 @@ Available factory functions from `webapp/static/js/charts.js`:
 
 ### Exposing a new database field in the API
 
-1. Add the column to the SQL query in `webapp/db.py`
+1. Add the column to the SQL query in `webapp/db.ts`
 2. If it needs to be in the compare metrics, add an entry to the `availableMetrics` array in `webapp/templates/compare.html`
 
 ---

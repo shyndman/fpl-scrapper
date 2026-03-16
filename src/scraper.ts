@@ -1,15 +1,20 @@
-import { FPLAPIError, FPLAuthError, FPLNotFoundError, FPLRateLimitError } from './errors.ts';
-import { getLogger } from './logger.ts';
-import type { SessionCookies } from './types.ts';
+import {
+  FPLAPIError,
+  FPLAuthError,
+  FPLNotFoundError,
+  FPLRateLimitError,
+} from "./errors.ts";
+import { getLogger } from "./logger.ts";
+import type { SessionCookies } from "./types.ts";
 
-const logger = getLogger('src.scraper');
+const logger = getLogger("src.scraper");
 
 const DEFAULT_HEADERS = {
-  'User-Agent':
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  Accept: 'application/json, text/javascript, */*; q=0.01',
-  'Accept-Language': 'en-GB,en;q=0.9',
-  Referer: 'https://fantasy.premierleague.com/',
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept: "application/json, text/javascript, */*; q=0.01",
+  "Accept-Language": "en-GB,en;q=0.9",
+  Referer: "https://fantasy.premierleague.com/",
 } as const;
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -59,7 +64,10 @@ function sleep(milliseconds: number): Promise<void> {
   });
 }
 
-function normalizeDelayBounds(minDelay: number, maxDelay: number): {
+function normalizeDelayBounds(
+  minDelay: number,
+  maxDelay: number,
+): {
   minDelay: number;
   maxDelay: number;
 } {
@@ -69,17 +77,19 @@ function normalizeDelayBounds(minDelay: number, maxDelay: number): {
 }
 
 function buildCookieHeader(cookies: SessionCookies): string | null {
-  const entries = Object.entries(cookies).filter(([, value]) => value.length > 0);
+  const entries = Object.entries(cookies).filter(
+    ([, value]) => value.length > 0,
+  );
   if (entries.length === 0) {
     return null;
   }
 
-  return entries.map(([name, value]) => `${name}=${value}`).join('; ');
+  return entries.map(([name, value]) => `${name}=${value}`).join("; ");
 }
 
 function normalizeUrl(baseUrl: string, path: string): string {
-  const trimmedBaseUrl = baseUrl.replace(/\/+$/u, '');
-  const trimmedPath = path.replace(/^\/+|\/+$/gu, '');
+  const trimmedBaseUrl = baseUrl.replace(/\/+$/u, "");
+  const trimmedPath = path.replace(/^\/+|\/+$/gu, "");
   return `${trimmedBaseUrl}/${trimmedPath}/`;
 }
 
@@ -96,14 +106,17 @@ function appendSearchParams(
 }
 
 function parseRetryAfterSeconds(headerValue: string | null): number {
-  const parsed = Number.parseInt(headerValue ?? '', 10);
+  const parsed = Number.parseInt(headerValue ?? "", 10);
   return Number.isFinite(parsed) && parsed >= 0
     ? parsed
     : DEFAULT_RETRY_AFTER_SECONDS;
 }
 
 function isTimeoutError(error: unknown): boolean {
-  return error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
+  return (
+    error instanceof Error &&
+    (error.name === "AbortError" || error.name === "TimeoutError")
+  );
 }
 
 function describeError(error: unknown): string {
@@ -122,8 +135,15 @@ export class RateLimiter {
   readonly #random: Random;
   #lastCallMs: number | null = null;
 
-  constructor(minDelaySeconds: number, maxDelaySeconds: number, deps: RateLimiterDeps = {}) {
-    const { minDelay, maxDelay } = normalizeDelayBounds(minDelaySeconds, maxDelaySeconds);
+  constructor(
+    minDelaySeconds: number,
+    maxDelaySeconds: number,
+    deps: RateLimiterDeps = {},
+  ) {
+    const { minDelay, maxDelay } = normalizeDelayBounds(
+      minDelaySeconds,
+      maxDelaySeconds,
+    );
     this.#minDelayMs = minDelay * 1000;
     this.#maxDelayMs = maxDelay * 1000;
     this.#sleep = deps.sleep ?? sleep;
@@ -138,11 +158,12 @@ export class RateLimiter {
       return;
     }
 
-    const delayMs = this.#minDelayMs + (this.#maxDelayMs - this.#minDelayMs) * this.#random();
+    const delayMs =
+      this.#minDelayMs + (this.#maxDelayMs - this.#minDelayMs) * this.#random();
     const elapsedMs = now - this.#lastCallMs;
     const remainingMs = delayMs - elapsedMs;
     if (remainingMs > 0) {
-      logger.debug('Rate limit: sleeping %.2fs', remainingMs / 1000);
+      logger.debug("Rate limit: sleeping %.2fs", remainingMs / 1000);
       await this.#sleep(remainingMs);
     }
 
@@ -167,12 +188,16 @@ export class FPLScraper {
   readonly #rateLimiter: RateLimiter;
   #requestCount = 0;
 
-  constructor(auth: ScraperAuth, baseUrl: string, options: FPLScraperOptions = {}) {
+  constructor(
+    auth: ScraperAuth,
+    baseUrl: string,
+    options: FPLScraperOptions = {},
+  ) {
     const minDelay = options.minDelay ?? 2;
     const maxDelay = options.maxDelay ?? 3;
 
     this.#auth = auth;
-    this.#baseUrl = baseUrl.replace(/\/+$/u, '');
+    this.#baseUrl = baseUrl.replace(/\/+$/u, "");
     this.#backoffFactor = options.backoffFactor ?? 2;
     this.#maxRetries = options.maxRetries ?? 5;
     this.#maxBackoffSeconds = options.maxBackoff ?? 120;
@@ -206,20 +231,22 @@ export class FPLScraper {
       if (options.requiresAuth) {
         const cookieHeader = buildCookieHeader(await this.#auth.getCookies());
         if (cookieHeader) {
-          headers.set('Cookie', cookieHeader);
+          headers.set("Cookie", cookieHeader);
         }
       }
 
       const controller = new AbortController();
       const timeout = setTimeout(() => {
-        controller.abort(new DOMException('The operation timed out.', 'TimeoutError'));
+        controller.abort(
+          new DOMException("The operation timed out.", "TimeoutError"),
+        );
       }, this.#timeoutMs);
 
       let response: Response;
       try {
         response = await this.#fetch(url, {
           headers,
-          method: 'GET',
+          method: "GET",
           signal: controller.signal,
         });
         this.#requestCount += 1;
@@ -230,11 +257,13 @@ export class FPLScraper {
         const backoffSeconds = this.#backoff(attempt);
         logger.warn(
           isTimeoutError(error)
-            ? 'Timeout (attempt %d/%d) — sleeping %.1fs'
-            : 'Connection error (attempt %d/%d): %s — sleeping %.1fs',
+            ? "Timeout (attempt %d/%d) — sleeping %.1fs"
+            : "Connection error (attempt %d/%d): %s — sleeping %.1fs",
           attempt + 1,
           this.#maxRetries,
-          ...(isTimeoutError(error) ? [backoffSeconds] : [describeError(error), backoffSeconds]),
+          ...(isTimeoutError(error)
+            ? [backoffSeconds]
+            : [describeError(error), backoffSeconds]),
         );
         await this.#sleep(backoffSeconds * 1000);
         continue;
@@ -243,7 +272,7 @@ export class FPLScraper {
       clearTimeout(timeout);
 
       if (response.status === 200) {
-        logger.debug('GET %s -> 200 (attempt %d)', url.toString(), attempt + 1);
+        logger.debug("GET %s -> 200 (attempt %d)", url.toString(), attempt + 1);
         return (await response.json()) as unknown;
       }
 
@@ -253,7 +282,9 @@ export class FPLScraper {
 
       if (response.status === 403) {
         if (!reauthenticated) {
-          logger.info('403 Forbidden — refreshing session cookies and retrying');
+          logger.info(
+            "403 Forbidden — refreshing session cookies and retrying",
+          );
           reauthenticated = true;
           await this.#auth.invalidate();
           continue;
@@ -265,8 +296,13 @@ export class FPLScraper {
       }
 
       if (response.status === 429) {
-        const retryAfterSeconds = parseRetryAfterSeconds(response.headers.get('Retry-After'));
-        logger.warn('429 Rate limited — sleeping %ds (Retry-After)', retryAfterSeconds);
+        const retryAfterSeconds = parseRetryAfterSeconds(
+          response.headers.get("Retry-After"),
+        );
+        logger.warn(
+          "429 Rate limited — sleeping %ds (Retry-After)",
+          retryAfterSeconds,
+        );
         await this.#sleep(retryAfterSeconds * 1000);
         lastError = new FPLRateLimitError(`Rate limited on ${url.toString()}`);
         continue;
@@ -275,19 +311,23 @@ export class FPLScraper {
       if (response.status >= 500) {
         const backoffSeconds = this.#backoff(attempt);
         logger.warn(
-          'HTTP %d on %s (attempt %d/%d) — sleeping %.1fs',
+          "HTTP %d on %s (attempt %d/%d) — sleeping %.1fs",
           response.status,
           url.toString(),
           attempt + 1,
           this.#maxRetries,
           backoffSeconds,
         );
-        lastError = new FPLAPIError(`HTTP ${response.status}: ${url.toString()}`);
+        lastError = new FPLAPIError(
+          `HTTP ${response.status}: ${url.toString()}`,
+        );
         await this.#sleep(backoffSeconds * 1000);
         continue;
       }
 
-      throw new FPLAPIError(`Unexpected HTTP ${response.status}: ${url.toString()}`);
+      throw new FPLAPIError(
+        `Unexpected HTTP ${response.status}: ${url.toString()}`,
+      );
     }
 
     if (lastError instanceof FPLRateLimitError) {
@@ -301,6 +341,9 @@ export class FPLScraper {
   }
 
   #backoff(attempt: number): number {
-    return Math.min(this.#maxBackoffSeconds, this.#backoffFactor ** attempt * 2);
+    return Math.min(
+      this.#maxBackoffSeconds,
+      this.#backoffFactor ** attempt * 2,
+    );
   }
 }

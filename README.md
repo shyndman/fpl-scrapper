@@ -30,6 +30,7 @@ The FPL website at `https://fantasy.premierleague.com/statistics` shows detailed
 This project has two components:
 
 **The scraper** (`src/`):
+
 - **Discovers and calls** that internal API on your behalf
 - **Downloads** statistics for all ~700 FPL players
 - **Stores** everything in a local SQLite database file (`data/fpl.db`)
@@ -37,9 +38,10 @@ This project has two components:
 - **Updates incrementally** — after each gameweek you only need to re-fetch the new data, not everything from scratch
 
 **The dashboard** (`webapp/`):
+
 - A local web application that reads `data/fpl.db` and presents it as interactive pages
 - Browse and filter all players and teams, view charts, and compare any players or teams side-by-side
-- Launch with `python -m webapp` and open http://127.0.0.1:8000
+- Launch with `npm run web` and open http://127.0.0.1:8292
 
 The database is also read directly by OpenClaw (or any other tool) for queries and analysis.
 
@@ -49,12 +51,12 @@ The database is also read directly by OpenClaw (or any other tool) for queries a
 
 The FPL API is not publicly documented, but the community has reverse-engineered it. There are four key endpoints this tool uses, all of which are public (no login required for basic player stats):
 
-| Endpoint | What it returns |
-|---|---|
-| `/api/bootstrap-static/` | All ~700 players, all 20 teams, all 38 gameweeks in one large JSON response |
-| `/api/element-summary/{player_id}/` | Per-gameweek breakdown for one player — one request per player |
-| `/api/event/{gameweek}/live/` | Live or provisional points for all players in a given gameweek |
-| `/api/fixtures/` | All match fixtures with scores and difficulty ratings |
+| Endpoint                            | What it returns                                                             |
+| ----------------------------------- | --------------------------------------------------------------------------- |
+| `/api/bootstrap-static/`            | All ~700 players, all 20 teams, all 38 gameweeks in one large JSON response |
+| `/api/element-summary/{player_id}/` | Per-gameweek breakdown for one player — one request per player              |
+| `/api/event/{gameweek}/live/`       | Live or provisional points for all players in a given gameweek              |
+| `/api/fixtures/`                    | All match fixtures with scores and difficulty ratings                       |
 
 **Two sync modes:**
 
@@ -74,32 +76,33 @@ fpl-web-scrapper/
 │
 ├── .env                       ← Your credentials (you create this; never commit it)
 ├── .gitignore                 ← Tells git to ignore credentials, data, logs
-├── requirements.txt           ← Production Python dependencies (2 packages)
-├── requirements-dev.txt       ← Development dependencies (testing, linting)
-├── pyproject.toml             ← Project metadata and tool configuration
+├── package.json               ← npm scripts, runtime deps, dev tooling
+├── package-lock.json          ← Locked dependency graph for reproducible installs
+├── tsconfig.json              ← TypeScript compiler configuration
+├── vitest.config.ts           ← Vitest test runner configuration
+├── eslint.config.js           ← ESLint configuration
 │
 ├── config/
-│   ├── settings.py            ← All configurable values (delays, paths, log level)
+│   ├── settings.ts            ← All configurable values (delays, paths, log level)
 │   └── .env.example           ← Template for the .env file — copy this to get started
 │
-├── src/                       ← All Python source code
-│   ├── main.py                ← Entry point — the CLI you actually run
-│   ├── auth.py                ← Handles FPL login and stores session cookies
-│   ├── scraper.py             ← Makes HTTP requests with rate limiting and retries
-│   ├── api.py                 ← Typed wrappers for each FPL API endpoint
-│   ├── transform.py           ← Converts raw JSON from the API into Python objects
-│   ├── models.py              ← Python data classes that mirror the database tables
-│   ├── database.py            ← Creates the database schema and handles all writes
-│   ├── sync.py                ← Orchestrates the full-sync and gameweek-sync workflows
-│   └── logger.py              ← Sets up logging to the terminal and to a log file
+├── src/                       ← All scraper TypeScript source code
+│   ├── main.ts                ← Entry point behind `npm run cli -- ...`
+│   ├── auth.ts                ← Handles FPL login and stores session cookies
+│   ├── scraper.ts             ← Makes HTTP requests with rate limiting and retries
+│   ├── api.ts                 ← Typed wrappers for each FPL API endpoint
+│   ├── transform.ts           ← Converts raw JSON from the API into row models
+│   ├── models.ts              ← Schema-aligned classes with `fromDict()` and `toDbTuple()`
+│   ├── database.ts            ← Creates the database schema and handles all writes
+│   ├── sync.ts                ← Orchestrates the full-sync and gameweek-sync workflows
+│   └── logger.ts              ← Sets up logging to the terminal and to a log file
 │
 ├── webapp/                    ← Local web dashboard (separate README inside)
 │   ├── README.md              ← Full webapp documentation — read this first
-│   ├── requirements.txt       ← Webapp Python dependencies
-│   ├── __main__.py            ← Entry point: python -m webapp
-│   ├── app.py                 ← FastAPI app factory, Jinja2 filters, lifespan
-│   ├── db.py                  ← Read-only database queries, TTL cache
-│   ├── images.py              ← Downloads player photos and team badges at startup
+│   ├── server.ts              ← Entry point behind `npm run web`
+│   ├── app.ts                 ← Fastify app factory, Nunjucks views, static assets
+│   ├── db.ts                  ← Read-only database queries, TTL cache
+│   ├── images.ts              ← Downloads player photos and team badges at startup
 │   ├── routers/               ← HTML page routes and JSON API routes
 │   ├── templates/             ← Jinja2 HTML templates (6 pages + base layout)
 │   └── static/                ← CSS, JS helpers, downloaded player/team images
@@ -110,11 +113,13 @@ fpl-web-scrapper/
 │   ├── SETUP.md               ← Condensed setup guide
 │   └── OPENCLAW.md            ← OpenClaw cron job integration guide
 │
-├── tests/                     ← Automated test suite (47 tests)
-│   ├── test_scraper.py        ← Tests for rate limiting and HTTP retry logic
-│   ├── test_transform.py      ← Tests for JSON parsing and data cleaning
-│   ├── test_database.py       ← Tests for database schema and upsert operations
-│   ├── test_sync.py           ← Tests for the full-sync and gameweek-sync workflows
+├── tests/                     ← Automated Vitest suite
+│   ├── test_scraper.ts        ← Tests for rate limiting and HTTP retry logic
+│   ├── test_transform.ts      ← Tests for JSON parsing and data cleaning
+│   ├── test_database.ts       ← Tests for database schema and upsert operations
+│   ├── test_sync.ts           ← Tests for the full-sync and gameweek-sync workflows
+│   ├── test_webapp_app.ts     ← Tests for Fastify app wiring and lifecycle behavior
+│   ├── test_webapp_pages.ts   ← Tests for HTML routes and rendered pages
 │   └── fixtures/              ← Sample API responses used by the tests (no network needed)
 │       ├── bootstrap_static.json
 │       ├── element_summary_318.json
@@ -134,8 +139,8 @@ fpl-web-scrapper/
 
 - `.env` — your FPL credentials (you create this once)
 - `data/fpl.db` — the database you query
-- `src/main.py` — the program you run
-- `config/settings.py` — if you need to tune delays or paths
+- `src/main.ts` — the CLI entrypoint behind `npm run cli -- ...`
+- `config/settings.ts` — if you need to tune delays or paths
 
 ---
 
@@ -143,19 +148,27 @@ fpl-web-scrapper/
 
 Before you begin, make sure you have:
 
-1. **Python 3.12 or later**
-   ```bash
-   python3 --version
-   # Should show Python 3.12.x or higher
-   ```
-   If you don't have it: download from [python.org](https://www.python.org/downloads/)
+1. **Node.js 24 or later**
 
-2. **A Fantasy Premier League account**
+   ```bash
+   node --version
+   # Should show v24.x or higher
+   ```
+
+   If you don't have it: install the current LTS or newer release from [nodejs.org](https://nodejs.org/).
+
+2. **npm**
+
+   ```bash
+   npm --version
+   ```
+
+3. **A Fantasy Premier League account**
    Free to create at [fantasy.premierleague.com](https://fantasy.premierleague.com). You only need this to provide credentials in the `.env` file. The main player statistics endpoints are public and work without authentication, but credentials let the scraper re-authenticate if FPL ever adds auth to these endpoints.
 
-3. **About 50 MB of free disk space** for the database.
+4. **About 50 MB of free disk space** for the database.
 
-4. **An internet connection** when running the scraper.
+5. **An internet connection** when running the scraper.
 
 ---
 
@@ -164,36 +177,20 @@ Before you begin, make sure you have:
 **Step 1: Get the code**
 
 If you cloned this repository, `cd` into the project folder:
+
 ```bash
 cd /path/to/fpl-web-scrapper
 ```
 
-**Step 2: Create a Python virtual environment**
-
-A virtual environment keeps this project's dependencies isolated from the rest of your system. You only do this once.
+**Step 2: Install dependencies**
 
 ```bash
-python3 -m venv .venv
+npm install
 ```
 
-**Step 3: Activate the virtual environment**
+This installs the Node runtime dependencies and the development tooling in one pass: the `tsx` CLI runner, Fastify dashboard server, Vitest, ESLint, Prettier, and TypeScript compiler.
 
-You need to do this every time you open a new terminal window to work on this project.
-
-```bash
-source .venv/bin/activate        # macOS and Linux
-# .venv\Scripts\activate         # Windows
-```
-
-Your terminal prompt will change to show `(.venv)` when it's active.
-
-**Step 4: Install dependencies**
-
-```bash
-pip install -r requirements.txt
-```
-
-This installs only two packages: `requests` (for making HTTP calls) and `python-dotenv` (for reading the `.env` file). Everything else the project uses is part of Python's standard library.
+All commands below are run from the project root after `npm install`.
 
 ---
 
@@ -238,19 +235,20 @@ The full list of configurable options is in `config/.env.example`.
 
 ## 7. Running the scraper
 
-All commands are run from the project root with the virtual environment active.
+All commands are run from the project root after `npm install`.
 
 ### First run — full sync
 
 Run this once when you first set the project up, and again at the start of each new football season:
 
 ```bash
-python -m src.main --full-sync
+npm run cli -- --full-sync
 ```
 
 This fetches everything: all teams, all gameweeks, all ~700 players, and the full gameweek-by-gameweek history for each player. It makes roughly 700+ HTTP requests and takes **30–40 minutes** due to rate limiting. This is intentional and keeps your account safe.
 
 You will see progress logged to the terminal:
+
 ```
 2025-03-11 09:00:00 [INFO    ] src.sync: Starting full sync (run_id=abc-123)
 2025-03-11 09:00:02 [INFO    ] src.sync: [1/5] Fetching bootstrap-static…
@@ -268,7 +266,7 @@ You will see progress logged to the terminal:
 Run this after each gameweek's results are confirmed (or let OpenClaw run it automatically):
 
 ```bash
-python -m src.main --current-gameweek
+npm run cli -- --current-gameweek
 ```
 
 This automatically detects which gameweek is current from the database and fetches only the new data. Takes 5–15 minutes.
@@ -278,7 +276,7 @@ This automatically detects which gameweek is current from the database and fetch
 If something went wrong and you need to re-fetch a particular gameweek:
 
 ```bash
-python -m src.main --gameweek 25
+npm run cli -- --gameweek 25
 ```
 
 ### Dry run (no database writes)
@@ -286,8 +284,8 @@ python -m src.main --gameweek 25
 Fetch data and log what would be written, but don't actually touch the database:
 
 ```bash
-python -m src.main --full-sync --dry-run
-python -m src.main --current-gameweek --dry-run
+npm run cli -- --full-sync --dry-run
+npm run cli -- --current-gameweek --dry-run
 ```
 
 Useful for checking the API is working before committing to a full run.
@@ -297,7 +295,7 @@ Useful for checking the API is working before committing to a full run.
 Probe all known FPL API endpoints and print their response structure as JSON:
 
 ```bash
-python -m src.main --discover-api
+npm run cli -- --discover-api
 ```
 
 Use this when you suspect the API has changed (see [section 14](#14-keeping-the-scraper-working-when-fpl-changes)).
@@ -307,18 +305,18 @@ Use this when you suspect the API has changed (see [section 14](#14-keeping-the-
 Add `--log-level DEBUG` to any command to see every HTTP request and database operation:
 
 ```bash
-python -m src.main --current-gameweek --log-level DEBUG
+npm run cli -- --current-gameweek --log-level DEBUG
 ```
 
 ### Exit codes
 
 The scraper exits with a code that tells OpenClaw (or any calling process) what happened:
 
-| Code | Meaning | Action |
-|---|---|---|
-| `0` | Complete success | Nothing needed |
-| `1` | Partial — some players failed, DB partially updated | Re-run the same command; it is safe |
-| `2` | Fatal — auth failure, DB unreachable, or network down | Investigate before re-running |
+| Code | Meaning                                               | Action                              |
+| ---- | ----------------------------------------------------- | ----------------------------------- |
+| `0`  | Complete success                                      | Nothing needed                      |
+| `1`  | Partial — some players failed, DB partially updated   | Re-run the same command; it is safe |
+| `2`  | Fatal — auth failure, DB unreachable, or network down | Investigate before re-running       |
 
 ---
 
@@ -326,34 +324,26 @@ The scraper exits with a code that tells OpenClaw (or any calling process) what 
 
 The webapp reads `data/fpl.db` and presents it as an interactive browser-based dashboard. The scraper must have been run at least once before the webapp has any data to show.
 
-### Install webapp dependencies
-
-```bash
-pip install -r webapp/requirements.txt
-```
-
-This only needs to be done once (or after a fresh `venv`).
-
 ### Start the server
 
 From the project root:
 
 ```bash
-python -m webapp
+npm run web
 ```
 
-Then open **http://127.0.0.1:8000** in your browser. Press `Ctrl+C` to stop the server.
+Then open **http://127.0.0.1:8292** in your browser. Press `Ctrl+C` to stop the server.
 
 ### What you get
 
-| Page | URL | Description |
-|---|---|---|
-| Dashboard | `/` | Current GW summary, top performers, all teams |
-| Players | `/players` | Filter and browse all ~700 players; sort by any stat |
-| Player detail | `/players/{id}` | Charts, stats, GW history, past seasons |
-| Teams | `/teams` | All 20 clubs with badges and records |
-| Team detail | `/teams/{id}` | Squad, fixture difficulty strip, strength radar |
-| Compare | `/compare` | Side-by-side charts for up to 5 players or teams |
+| Page          | URL             | Description                                          |
+| ------------- | --------------- | ---------------------------------------------------- |
+| Dashboard     | `/`             | Current GW summary, top performers, all teams        |
+| Players       | `/players`      | Filter and browse all ~700 players; sort by any stat |
+| Player detail | `/players/{id}` | Charts, stats, GW history, past seasons              |
+| Teams         | `/teams`        | All 20 clubs with badges and records                 |
+| Team detail   | `/teams/{id}`   | Squad, fixture difficulty strip, strength radar      |
+| Compare       | `/compare`      | Side-by-side charts for up to 5 players or teams     |
 
 **Images:** Player photos and team badges are downloaded from the FPL CDN in the background the first time the server starts. Subsequent restarts skip files that already exist.
 
@@ -367,53 +357,47 @@ For the full webapp documentation — folder structure, all pages explained, the
 
 The test suite covers the rate limiter, HTTP retry logic, JSON parsing, database operations, and sync workflows. It runs entirely offline using sample JSON responses stored in `tests/fixtures/` — no network connection or FPL account needed.
 
-**Install dev dependencies first** (if you haven't already):
-
-```bash
-pip install -r requirements-dev.txt
-```
-
 **Run all tests:**
 
 ```bash
-python -m pytest tests/ -v
+npm test
 ```
 
 You should see output like:
+
 ```
-tests/test_database.py::TestSchemaInit::test_tables_created PASSED
-tests/test_database.py::TestUpsertTeams::test_insert PASSED
-...
-tests/test_scraper.py::test_get_200_returns_json PASSED
-tests/test_scraper.py::test_get_retries_on_500 PASSED
-tests/test_scraper.py::test_get_403_triggers_reauth_and_retries PASSED
-...
-============================== 47 passed in 1.88s ==============================
+ RUN  v4.1.0 /path/to/fpl-web-scrapper
+
+ Test Files  X passed (X)
+      Tests  Y passed (Y)
+   Duration  ...
 ```
 
 **Run a specific test file:**
 
 ```bash
-python -m pytest tests/test_scraper.py -v
-python -m pytest tests/test_transform.py -v
-python -m pytest tests/test_database.py -v
-python -m pytest tests/test_sync.py -v
+npm test -- tests/test_scraper.ts
+npm test -- tests/test_transform.ts
+npm test -- tests/test_database.ts
+npm test -- tests/test_sync.ts
 ```
 
-**Run with coverage report:**
+**Run the other quality checks:**
 
 ```bash
-python -m pytest tests/ --cov=src --cov-report=term-missing
+npm run lint
+npm run typecheck
+npx prettier --check .
 ```
 
 **What each test file covers:**
 
-| File | What it tests |
-|---|---|
-| `test_scraper.py` | Rate limiter timing, HTTP 200/404/403/429/5xx handling, retry logic, re-auth on 403 |
-| `test_transform.py` | Parsing of every API response type, edge cases like missing fields, malformed data |
-| `test_database.py` | Schema creation, all upsert operations, idempotency, query helpers |
-| `test_sync.py` | Full sync and gameweek sync workflows, dry run mode, error tolerance, scrape log |
+| File                | What it tests                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------- |
+| `test_scraper.ts`   | Rate limiter timing, HTTP 200/404/403/429/5xx handling, retry logic, re-auth on 403 |
+| `test_transform.ts` | Parsing of every API response type, edge cases like missing fields, malformed data  |
+| `test_database.ts`  | Schema creation, all upsert operations, idempotency, query helpers                  |
+| `test_sync.ts`      | Full sync and gameweek sync workflows, dry run mode, error tolerance, scrape log    |
 
 ---
 
@@ -471,7 +455,7 @@ OpenClaw calls this scraper automatically after each gameweek. Here is how to se
 Before the cron can run unattended:
 
 - [ ] The `.env` file exists at the project root with valid FPL credentials
-- [ ] The virtual environment is installed (`pip install -r requirements.txt`)
+- [ ] Project dependencies are installed (`npm install`)
 - [ ] The database has been initialised at least once with `--full-sync`
 - [ ] The `data/` and `logs/` directories exist (created automatically on first run)
 
@@ -479,37 +463,37 @@ Before the cron can run unattended:
 
 ```bash
 cd /absolute/path/to/fpl-web-scrapper && \
-  /absolute/path/to/fpl-web-scrapper/.venv/bin/python -m src.main --current-gameweek \
+  npm run cli -- --current-gameweek \
   >> logs/cron.log 2>&1
 ```
 
-Use absolute paths. Replace `/absolute/path/to/fpl-web-scrapper` with the actual location on your machine.
+Use absolute paths for the repository itself. Replace `/absolute/path/to/fpl-web-scrapper` with the actual location on your machine. If your cron environment has a minimal `PATH`, point it at your system `npm` binary explicitly.
 
 ### Recommended schedule
 
 Premier League fixtures typically finish by 22:30 UK time. FPL finalises bonus points 1–2 hours after the last match. Running at 02:00 UTC gives a comfortable margin.
 
-| Cron expression | When it runs | Covers |
-|---|---|---|
-| `0 2 * * 3` | Every Wednesday at 02:00 UTC | Monday/Tuesday fixtures |
-| `0 2 * * 0` | Every Sunday at 02:00 UTC | Saturday/Sunday fixtures |
+| Cron expression | When it runs                 | Covers                   |
+| --------------- | ---------------------------- | ------------------------ |
+| `0 2 * * 3`     | Every Wednesday at 02:00 UTC | Monday/Tuesday fixtures  |
+| `0 2 * * 0`     | Every Sunday at 02:00 UTC    | Saturday/Sunday fixtures |
 
 ### Exit codes and what to do with them
 
-| Code | OpenClaw should... |
-|---|---|
-| `0` | Log success, nothing else needed |
-| `1` | Re-trigger the same command once; it will safely pick up where it left off |
-| `2` | Alert — check `logs/cron.log` and `data/fpl.db`'s `scrape_log` table |
+| Code | OpenClaw should...                                                         |
+| ---- | -------------------------------------------------------------------------- |
+| `0`  | Log success, nothing else needed                                           |
+| `1`  | Re-trigger the same command once; it will safely pick up where it left off |
+| `2`  | Alert — check `logs/cron.log` and `data/fpl.db`'s `scrape_log` table       |
 
 ### Re-running a missed gameweek manually
 
 ```bash
 # If you know which gameweek was missed:
-python -m src.main --gameweek 25
+npm run cli -- --gameweek 25
 
 # Or just let it auto-detect:
-python -m src.main --current-gameweek
+npm run cli -- --current-gameweek
 ```
 
 Both commands are safe to re-run at any time — they will not create duplicate data.
@@ -520,20 +504,20 @@ For the full OpenClaw integration reference, see [docs/OPENCLAW.md](docs/OPENCLA
 
 ## 12. Querying the database
 
-The database at `data/fpl.db` is a standard SQLite file. It can be read by any SQLite client, Python's built-in `sqlite3` module, or tools like [DB Browser for SQLite](https://sqlitebrowser.org).
+The database at `data/fpl.db` is a standard SQLite file. It can be read by the `sqlite3` CLI, any SQLite client, or tools like [DB Browser for SQLite](https://sqlitebrowser.org).
 
 ### Database tables
 
-| Table | What it contains |
-|---|---|
-| `teams` | All 20 Premier League clubs |
-| `gameweeks` | All 38 gameweeks with deadlines, flags, and summary stats |
-| `players` | All ~700 FPL players with current season aggregates, price, form, status |
-| `player_history` | Per-player, per-gameweek breakdown (the most detailed stats table) |
-| `player_history_past` | Season summary for each player across prior seasons |
-| `fixtures` | All matches with scores and difficulty ratings |
-| `live_gameweek_stats` | Provisional points during/after a gameweek (before bonus finalisation) |
-| `scrape_log` | Audit trail of every scraper run |
+| Table                 | What it contains                                                         |
+| --------------------- | ------------------------------------------------------------------------ |
+| `teams`               | All 20 Premier League clubs                                              |
+| `gameweeks`           | All 38 gameweeks with deadlines, flags, and summary stats                |
+| `players`             | All ~700 FPL players with current season aggregates, price, form, status |
+| `player_history`      | Per-player, per-gameweek breakdown (the most detailed stats table)       |
+| `player_history_past` | Season summary for each player across prior seasons                      |
+| `fixtures`            | All matches with scores and difficulty ratings                           |
+| `live_gameweek_stats` | Provisional points during/after a gameweek (before bonus finalisation)   |
+| `scrape_log`          | Audit trail of every scraper run                                         |
 
 > **Important:** Prices in the database are stored as integers in tenths of millions. Divide by 10.0 to get the display value (e.g. `130 / 10.0 = £13.0m`). Player positions are stored as integers: `1=GK, 2=DEF, 3=MID, 4=FWD`.
 
@@ -606,15 +590,17 @@ For the complete schema with all column descriptions, see [docs/SCHEMA.md](docs/
 ### "No such file or directory: data/fpl.db"
 
 You haven't run the scraper yet. Run `--full-sync` first:
+
 ```bash
-python -m src.main --full-sync
+npm run cli -- --full-sync
 ```
 
 ### "No current gameweek in the database" when running `--current-gameweek`
 
 The database exists but has no gameweek data. Run a full sync to populate it:
+
 ```bash
-python -m src.main --full-sync
+npm run cli -- --full-sync
 ```
 
 ### HTTP 403 errors / "Authentication failed"
@@ -623,13 +609,14 @@ python -m src.main --full-sync
 - Delete the cached session and try again:
   ```bash
   rm -f data/.session.json
-  python -m src.main --current-gameweek
+  npm run cli -- --current-gameweek
   ```
 - Note: the main player stats endpoints are **public** — a persistent 403 usually means a temporary server-side block, not a credential problem. Wait 15 minutes and try again.
 
 ### HTTP 429 errors / "Rate limited"
 
 FPL is throttling your requests. The scraper will automatically wait and retry. If it keeps happening:
+
 - Increase the delays in `.env`:
   ```ini
   REQUEST_DELAY_MIN=4.0
@@ -647,25 +634,29 @@ Another process has the database open with a write transaction. The scraper uses
 
 ### Tests failing
 
-Make sure you installed the dev dependencies:
+Make sure you installed the project dependencies:
+
 ```bash
-pip install -r requirements-dev.txt
-python -m pytest tests/ -v
+npm install
+npm test
 ```
 
 If a specific test is failing after you've modified code, run that test with verbose output:
+
 ```bash
-python -m pytest tests/test_transform.py -v -s
+npm test -- tests/test_transform.ts
 ```
 
 ### Checking logs
 
 The scraper writes to both the terminal and `logs/fpl_scraper.log`. For historical runs, check the log file:
+
 ```bash
 tail -100 logs/fpl_scraper.log
 ```
 
 Or query the scrape log table in the database:
+
 ```sql
 SELECT * FROM scrape_log ORDER BY started_at DESC LIMIT 10;
 ```
@@ -681,10 +672,11 @@ FPL occasionally updates its website and the underlying API — adding new field
 Run the discovery command to probe the live API and print the current structure of each endpoint:
 
 ```bash
-python -m src.main --discover-api
+npm run cli -- --discover-api
 ```
 
 Compare the output to [docs/API.md](docs/API.md). Look for:
+
 - New top-level keys in the response
 - Missing keys that were previously there
 - Fields that have been renamed
@@ -696,63 +688,65 @@ You can also inspect the raw API response yourself. Open your browser's develope
 Run the scraper with verbose logging and a dry run to see the exact error without touching the database:
 
 ```bash
-python -m src.main --current-gameweek --dry-run --log-level DEBUG
+npm run cli -- --current-gameweek --dry-run --log-level DEBUG
 ```
 
 Common failure patterns:
 
-| Error | Likely cause |
-|---|---|
-| `KeyError: 'some_field'` | FPL renamed or removed a field |
-| `TypeError` in transform | A field changed type (e.g. int → string) |
-| All players return 0 for a stat | FPL added a new field name for the same stat |
-| HTTP 404 on an endpoint | FPL changed the URL path |
+| Error                                      | Likely cause                                 |
+| ------------------------------------------ | -------------------------------------------- |
+| `TypeError: Expected value for some_field` | FPL renamed or removed a field               |
+| `TypeError` in transform                   | A field changed type (e.g. int → string)     |
+| All players return 0 for a stat            | FPL added a new field name for the same stat |
+| HTTP 404 on an endpoint                    | FPL changed the URL path                     |
 
 ### Step 3: Fix the issue
 
 **If a field was renamed or removed:**
 
-Open `src/models.py` and find the `from_dict()` method for the affected model (e.g. `Player.from_dict()`). Update the field name to match the new API response. Use `.get("new_field_name")` with a fallback so the code won't crash if the field is absent:
+Open `src/models.ts` and find the `fromDict()` method for the affected model (for example `Player.fromDict()`). Update the field name to match the new API response. Use a fallback so the code still tolerates both shapes while you complete the cutover:
 
-```python
-# Old
-expected_goals=_float_str(d.get("expected_goals")),
+```ts
+// Old
+_float(d.expected_goals);
 
-# If FPL renamed it to "xg":
-expected_goals=_float_str(d.get("xg") or d.get("expected_goals")),
+// If FPL renamed it to "xg":
+_float(d.xg ?? d.expected_goals);
 ```
 
 **If a new stat field was added and you want to capture it:**
 
-1. Add the column to the relevant table in `src/database.py` (in `_SCHEMA_SQL`)
-2. Add the field to the dataclass in `src/models.py`
-3. Map the field in `src/models.py`'s `from_dict()` method
-4. Add it to the `to_db_tuple()` method (order must match the SQL column order)
-5. Update the INSERT statement in `src/database.py` to include the new column
-6. Add a test case in `tests/test_transform.py` and update `tests/fixtures/*.json` with the new field
+1. Add the column to the relevant table in `src/database.ts` (in `_SCHEMA_SQL`)
+2. Add the field to the relevant class in `src/models.ts`
+3. Map the field in that class's `fromDict()` method
+4. Add it to `toDbTuple()` (order must match the SQL column order)
+5. Update the INSERT statement in `src/database.ts` to include the new column
+6. Add a test case in `tests/test_transform.ts` and update `tests/fixtures/*.json` with the new field
 7. Update [docs/API.md](docs/API.md) and [docs/SCHEMA.md](docs/SCHEMA.md)
 
 **If an API endpoint URL changed:**
 
-Open `src/api.py` and update the path string in the relevant method. Endpoint paths are clearly labelled:
+Open `src/api.ts` and update the path string in the relevant method. Endpoint paths are clearly labelled:
 
-```python
-def get_bootstrap_static(self) -> dict:
-    return self._scraper.get("bootstrap-static")  # ← update this string
+```ts
+async getBootstrapStatic(): Promise<unknown> {
+  return await this.#scraper.get("bootstrap-static"); // ← update this string
+}
 ```
 
 **If the login flow changed:**
 
-Open `src/auth.py`. The login POST parameters and the expected cookie names are near the top of the file:
+Open `src/auth.ts`. The login POST parameters and the expected cookie names are near the top of the file:
 
-```python
-payload = {
-    "login": self._login,
-    "password": self._password,
-    "redirect_uri": "https://fantasy.premierleague.com/",
-    "app": "plfpl-web",      # ← FPL may change this
-}
-_COOKIE_NAMES = ("pl_profile", "sessionid")  # ← or these
+```ts
+const COOKIE_NAMES = new Set(["pl_profile", "sessionid"]);
+
+const payload = new URLSearchParams({
+  login: this.#login,
+  password: this.#password,
+  redirect_uri: "https://fantasy.premierleague.com/",
+  app: "plfpl-web", // ← FPL may change this
+});
 ```
 
 Delete `data/.session.json` after any auth changes to force a fresh login.
@@ -762,7 +756,7 @@ Delete `data/.session.json` after any auth changes to force a fresh login.
 The tests use saved JSON responses in `tests/fixtures/`. If the API response shape changed, update these files to match the new structure, then re-run the tests:
 
 ```bash
-python -m pytest tests/ -v
+npm test
 ```
 
 ### Step 5: Document the change

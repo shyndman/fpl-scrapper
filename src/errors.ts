@@ -6,27 +6,27 @@
 export class FPLAPIError extends Error {
   constructor(message: string, cause?: unknown) {
     super(message, cause === undefined ? undefined : { cause });
-    this.name = 'FPLAPIError';
+    this.name = "FPLAPIError";
   }
 }
 
 export class FPLAuthError extends FPLAPIError {
   constructor(message: string, cause?: unknown) {
     super(message, cause);
-    this.name = 'FPLAuthError';
+    this.name = "FPLAuthError";
   }
 }
 
 export class FPLRateLimitError extends FPLAPIError {
   constructor(message: string, cause?: unknown) {
     super(message, cause);
-    this.name = 'FPLRateLimitError';
+    this.name = "FPLRateLimitError";
   }
 }
 
 export class FPLNotFoundError extends FPLAPIError {
   constructor(message: string, cause?: unknown) {
     super(message, cause);
-    this.name = 'FPLNotFoundError';
+    this.name = "FPLNotFoundError";
   }
 }

@@ -1,13 +1,21 @@
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { createLogger, format, transports } from 'winston';
-import type { Logger } from 'winston';
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+import { createLogger, format, transports } from "winston";
+import type { Logger } from "winston";
 
-const ROOT_LOGGER_NAME = 'root';
-const KNOWN_LEVELS = new Set(['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly']);
+const ROOT_LOGGER_NAME = "root";
+const KNOWN_LEVELS = new Set([
+  "error",
+  "warn",
+  "info",
+  "http",
+  "verbose",
+  "debug",
+  "silly",
+]);
 
 const configuredLogger = createLogger({
-  level: 'info',
+  level: "info",
   exitOnError: false,
   transports: [],
 });
@@ -15,22 +23,26 @@ const configuredLogger = createLogger({
 function normalizeLogLevel(logLevel: string): string {
   const normalizedLevel = logLevel.trim().toLowerCase();
 
-  if (normalizedLevel === 'warning') {
-    return 'warn';
+  if (normalizedLevel === "warning") {
+    return "warn";
   }
 
-  return KNOWN_LEVELS.has(normalizedLevel) ? normalizedLevel : 'info';
+  return KNOWN_LEVELS.has(normalizedLevel) ? normalizedLevel : "info";
 }
 
 function buildLogFormat() {
   return format.combine(
     format.errors({ stack: true }),
     format.splat(),
-    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
     format.printf((info) => {
-      const loggerName = typeof info.loggerName === 'string' ? info.loggerName : ROOT_LOGGER_NAME;
-      const renderedMessage = typeof info.stack === 'string' ? info.stack : String(info.message);
-      return `${info.timestamp} [${info.level.toUpperCase().padEnd(8, ' ')}] ${loggerName}: ${renderedMessage}`;
+      const loggerName =
+        typeof info.loggerName === "string"
+          ? info.loggerName
+          : ROOT_LOGGER_NAME;
+      const renderedMessage =
+        typeof info.stack === "string" ? info.stack : String(info.message);
+      return `${info.timestamp} [${info.level.toUpperCase().padEnd(8, " ")}] ${loggerName}: ${renderedMessage}`;
     }),
   );
 }
@@ -43,10 +55,10 @@ function clearTransports(logger: Logger): void {
 }
 
 /** Configure the shared application logger once at startup and replace prior transports on re-init. */
-export function setupLogging(logLevel = 'INFO', logFile?: string): Logger {
+export function setupLogging(logLevel = "INFO", logFile?: string): Logger {
   clearTransports(configuredLogger);
 
-  const activeTransports: Logger['transports'] = [new transports.Console()];
+  const activeTransports: Logger["transports"] = [new transports.Console()];
   if (logFile) {
     mkdirSync(dirname(logFile), { recursive: true });
     activeTransports.push(

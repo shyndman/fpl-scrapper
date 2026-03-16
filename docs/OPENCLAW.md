@@ -9,7 +9,7 @@ OpenClaw (cron scheduler)
     │
     │  triggers after gameweek results are confirmed
     ▼
-python -m src.main --current-gameweek
+npm run cli -- --current-gameweek
     │
     ├── GET /api/bootstrap-static/  (player prices, form, ownership)
     ├── GET /api/fixtures/?event=N  (fixture results)
@@ -29,10 +29,10 @@ Premier League fixtures typically finish by 22:30 UK time (22:30 BST / 21:30 GMT
 
 **Recommended schedule:**
 
-| Day | Time (UTC) | Purpose |
-|---|---|---|
+| Day             | Time (UTC)  | Purpose                                |
+| --------------- | ----------- | -------------------------------------- |
 | Wednesday 02:00 | `0 2 * * 3` | Covers Monday/Tuesday evening fixtures |
-| Sunday 02:00 | `0 2 * * 0` | Covers Saturday/Sunday fixtures |
+| Sunday 02:00    | `0 2 * * 0` | Covers Saturday/Sunday fixtures        |
 
 These times are conservative — the data should be fully confirmed several hours before.
 
@@ -41,13 +41,15 @@ These times are conservative — the data should be fully confirmed several hour
 In OpenClaw, create a scheduled task with:
 
 **Command:**
+
 ```bash
 cd /path/to/fpl-web-scrapper && \
-  /path/to/.venv/bin/python -m src.main --current-gameweek \
+  npm run cli -- --current-gameweek \
   >> logs/cron.log 2>&1
 ```
 
 **Exit code handling:**
+
 - `0` — Success. All data updated.
 - `1` — Partial. Some players failed to scrape. Re-trigger the same command; it is safe to re-run.
 - `2` — Fatal. Auth failed, DB unreachable, or network error. Alert and investigate.
@@ -59,12 +61,13 @@ Before the cron runs, ensure:
 - [ ] `.env` exists at the project root with `FPL_LOGIN` and `FPL_PASSWORD`
 - [ ] `data/` directory exists and is writable (created automatically on first run)
 - [ ] `logs/` directory exists (created automatically on first run)
-- [ ] Python virtual environment is installed: `pip install -r requirements.txt`
-- [ ] The database has been initialised with `--full-sync` at least once
+- [ ] Node.js 24+ and project dependencies are installed: `npm install`
+- [ ] The database has been initialised with `npm run cli -- --full-sync` at least once
 
 ## Idempotency Guarantee
 
 The `--current-gameweek` command is **fully idempotent**. All DB writes use `INSERT OR REPLACE` on `UNIQUE` constraints. Re-running after a partial failure:
+
 - Will not create duplicate rows
 - Will refresh any data that was missed
 - Will update player prices, ownership, and form from the latest bootstrap
@@ -171,6 +174,7 @@ SELECT
 By default the database is at `data/fpl.db` relative to the project root.
 
 To use a custom path (e.g. a shared volume):
+
 1. Set `DB_PATH=/shared/fpl.db` in `.env`
 2. Or pass `--db-path /shared/fpl.db` to the CLI
 
@@ -185,6 +189,7 @@ Configure OpenClaw to alert when:
 3. `players_scraped = 0` on a `gameweek_sync` run (suggests auth failure)
 
 Example alert query:
+
 ```sql
 SELECT count(*) AS recent_successes
 FROM scrape_log
@@ -199,10 +204,10 @@ If OpenClaw missed a gameweek or the scrape failed:
 
 ```bash
 # Re-sync a specific gameweek
-python -m src.main --gameweek 25
+npm run cli -- --gameweek 25
 
 # Or force a full refresh
-python -m src.main --full-sync
+npm run cli -- --full-sync
 ```
 
 Both commands are idempotent and safe to run at any time.

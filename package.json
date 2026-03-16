@@ -13,8 +13,8 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "cli": "node src/main.ts",
-    "web": "node webapp/server.ts"
+    "cli": "tsx src/main.ts",
+    "web": "tsx webapp/server.ts"
   },
   "dependencies": {
     "@fastify/static": "^9.0.0",
@@ -34,7 +34,9 @@
     "@typescript-eslint/parser": "^8.57.0",
     "eslint": "^10.0.3",
     "prettier": "^3.8.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
+    "tsx": "^4.20.6",
     "vitest": "^4.1.0"
   }
 }

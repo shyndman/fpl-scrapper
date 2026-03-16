@@ -27,6 +27,7 @@ app=plfpl-web
 ```
 
 **Response:** Sets two cookies:
+
 - `pl_profile` — scoped to `.premierleague.com`
 - `sessionid` — scoped to `fantasy.premierleague.com`
 
@@ -42,32 +43,32 @@ Returns the master data snapshot. This is the primary endpoint — it contains a
 
 **Response keys:**
 
-| Key | Type | Description |
-|---|---|---|
-| `events` | array | All 38 gameweeks with scores, deadlines, flags |
-| `teams` | array | All 20 Premier League clubs |
-| `elements` | array | All ~700 FPL players with season stats |
-| `element_types` | array | Position definitions (GK, DEF, MID, FWD) |
-| `element_stats` | array | Stat metadata (label, abbreviation) |
-| `game_settings` | object | FPL game rules and limits |
-| `phases` | array | Season phases (e.g. "Overall", "Month 1") |
-| `total_players` | integer | Total FPL managers registered |
+| Key             | Type    | Description                                    |
+| --------------- | ------- | ---------------------------------------------- |
+| `events`        | array   | All 38 gameweeks with scores, deadlines, flags |
+| `teams`         | array   | All 20 Premier League clubs                    |
+| `elements`      | array   | All ~700 FPL players with season stats         |
+| `element_types` | array   | Position definitions (GK, DEF, MID, FWD)       |
+| `element_stats` | array   | Stat metadata (label, abbreviation)            |
+| `game_settings` | object  | FPL game rules and limits                      |
+| `phases`        | array   | Season phases (e.g. "Overall", "Month 1")      |
+| `total_players` | integer | Total FPL managers registered                  |
 
 **Player (`elements`) fields of note:**
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | int | FPL player ID |
-| `first_name`, `second_name`, `web_name` | string | Name fields |
-| `team` | int | Team ID (FK to `teams[].id`) |
-| `element_type` | int | 1=GK, 2=DEF, 3=MID, 4=FWD |
-| `status` | string | `a`=available, `d`=doubt, `i`=injured, `s`=suspended, `u`=unavailable |
-| `now_cost` | int | Cost in tenths of millions (130 = £13.0m) |
-| `total_points` | int | Season total |
-| `form` | string | Rolling 5-GW form average |
-| `selected_by_percent` | string | Ownership percentage |
-| `influence`, `creativity`, `threat`, `ict_index` | string | ICT metrics |
-| `expected_goals`, `expected_assists` | string | xG / xA as strings |
+| Field                                            | Type   | Notes                                                                 |
+| ------------------------------------------------ | ------ | --------------------------------------------------------------------- |
+| `id`                                             | int    | FPL player ID                                                         |
+| `first_name`, `second_name`, `web_name`          | string | Name fields                                                           |
+| `team`                                           | int    | Team ID (FK to `teams[].id`)                                          |
+| `element_type`                                   | int    | 1=GK, 2=DEF, 3=MID, 4=FWD                                             |
+| `status`                                         | string | `a`=available, `d`=doubt, `i`=injured, `s`=suspended, `u`=unavailable |
+| `now_cost`                                       | int    | Cost in tenths of millions (130 = £13.0m)                             |
+| `total_points`                                   | int    | Season total                                                          |
+| `form`                                           | string | Rolling 5-GW form average                                             |
+| `selected_by_percent`                            | string | Ownership percentage                                                  |
+| `influence`, `creativity`, `threat`, `ict_index` | string | ICT metrics                                                           |
+| `expected_goals`, `expected_assists`             | string | xG / xA as strings                                                    |
 
 ---
 
@@ -77,11 +78,11 @@ Detailed history for a single player.
 
 **Response keys:**
 
-| Key | Type | Description |
-|---|---|---|
-| `history` | array | Per-gameweek stats for the current season |
-| `history_past` | array | Season summary for each prior season |
-| `fixtures` | array | Upcoming fixtures with difficulty ratings |
+| Key            | Type  | Description                               |
+| -------------- | ----- | ----------------------------------------- |
+| `history`      | array | Per-gameweek stats for the current season |
+| `history_past` | array | Season summary for each prior season      |
+| `fixtures`     | array | Upcoming fixtures with difficulty ratings |
 
 **`history[]` fields:** `round`, `total_points`, `minutes`, `goals_scored`, `assists`, `clean_sheets`, `goals_conceded`, `bonus`, `bps`, `influence`, `creativity`, `threat`, `ict_index`, `expected_goals`, `expected_assists`, `value` (cost that GW), `selected` (ownership count), `transfers_in`, `transfers_out`, `was_home`, `kickoff_time`, `opponent_team`
 
@@ -94,6 +95,7 @@ Detailed history for a single player.
 Live (in-progress or just-finished) stats for all players in a gameweek.
 
 **Response:**
+
 ```json
 {
   "elements": [
@@ -132,6 +134,7 @@ The `explain` array breaks down how each player's points were earned per fixture
 Returns all fixtures for the season.
 
 **Query parameters:**
+
 - `?event=N` — filter to gameweek N only
 - `?future=1` — upcoming fixtures only
 
@@ -178,7 +181,7 @@ The scraper enforces a random 2–3 second delay between every request. On HTTP 
 Run the built-in discovery command to probe all known endpoints and inspect their structure:
 
 ```bash
-python -m src.main --discover-api
+npm run cli -- --discover-api
 ```
 
 This outputs JSON describing the top-level keys and types from each endpoint without writing to the database.

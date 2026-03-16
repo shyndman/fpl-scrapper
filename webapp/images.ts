@@ -8,7 +8,11 @@ import BetterSqlite3 from "better-sqlite3";
 import { getLogger } from "../src/logger.ts";
 
 const logger = getLogger("webapp.images");
-const DEFAULT_STATIC_DIR = join(dirname(fileURLToPath(import.meta.url)), "static", "images");
+const DEFAULT_STATIC_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "static",
+  "images",
+);
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123 Safari/537.36";
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -46,7 +50,9 @@ interface DownloadImagesDeps {
 }
 
 function formatUrl(template: string, params: Record<string, number>): string {
-  return template.replace(/\{(\w+)\}/gu, (_match, key: string) => String(params[key]));
+  return template.replace(/\{(\w+)\}/gu, (_match, key: string) =>
+    String(params[key]),
+  );
 }
 
 function sleep(milliseconds: number): Promise<void> {

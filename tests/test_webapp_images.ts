@@ -1,4 +1,11 @@
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -84,7 +91,9 @@ describe("webapp/images.ts", () => {
       "https://example.test/ok.png": new FakeResponse(200, Buffer.from("png")),
     });
 
-    await expect(_download("https://example.test/ok.png", destination, session)).resolves.toBe(true);
+    await expect(
+      _download("https://example.test/ok.png", destination, session),
+    ).resolves.toBe(true);
     expect(readFileSync(destination)).toEqual(Buffer.from("png"));
   });
 
@@ -97,8 +106,12 @@ describe("webapp/images.ts", () => {
       "https://example.test/error.png": new Error("boom"),
     });
 
-    await expect(_download("https://example.test/missing.png", httpDestination, session)).resolves.toBe(false);
-    await expect(_download("https://example.test/error.png", errorDestination, session)).resolves.toBe(false);
+    await expect(
+      _download("https://example.test/missing.png", httpDestination, session),
+    ).resolves.toBe(false);
+    await expect(
+      _download("https://example.test/error.png", errorDestination, session),
+    ).resolves.toBe(false);
     expect(() => readFileSync(httpDestination)).toThrow();
     expect(() => readFileSync(errorDestination)).toThrow();
   });
@@ -121,7 +134,10 @@ describe("webapp/images.ts", () => {
         200,
         Buffer.from("legacy-player"),
       ),
-      [TEAM_BADGE_URL.replace("{team_id}", "7")]: new FakeResponse(200, Buffer.from("badge")),
+      [TEAM_BADGE_URL.replace("{team_id}", "7")]: new FakeResponse(
+        200,
+        Buffer.from("badge"),
+      ),
     });
 
     await downloadImages(dbPath, {
@@ -130,9 +146,15 @@ describe("webapp/images.ts", () => {
       staticDir,
     });
 
-    expect(readFileSync(join(playerDir, "p101.png"))).toEqual(Buffer.from("legacy-player"));
-    expect(readFileSync(join(playerDir, "p202.png"))).toEqual(Buffer.from("existing"));
-    expect(readFileSync(join(badgeDir, "t1.png"))).toEqual(Buffer.from("badge"));
+    expect(readFileSync(join(playerDir, "p101.png"))).toEqual(
+      Buffer.from("legacy-player"),
+    );
+    expect(readFileSync(join(playerDir, "p202.png"))).toEqual(
+      Buffer.from("existing"),
+    );
+    expect(readFileSync(join(badgeDir, "t1.png"))).toEqual(
+      Buffer.from("badge"),
+    );
     expect(session.urls.map(([url]) => url)).toEqual([
       PLAYER_PHOTO_URL.replace("{code}", "101"),
       PLAYER_PHOTO_URL_LEGACY.replace("{code}", "101"),
@@ -163,14 +185,27 @@ describe("webapp/images.ts", () => {
     const staticDir = join(tempDirectory, "static-images");
     mkdirSync(join(staticDir, "players"), { recursive: true });
     mkdirSync(join(staticDir, "badges"), { recursive: true });
-    writeFileSync(join(staticDir, "players", "p101.png"), Buffer.from("player"));
+    writeFileSync(
+      join(staticDir, "players", "p101.png"),
+      Buffer.from("player"),
+    );
     writeFileSync(join(staticDir, "badges", "t1.png"), Buffer.from("badge"));
 
-    expect(playerPhotoUrl(101, staticDir)).toBe("/static/images/players/p101.png");
-    expect(playerPhotoUrl(999, staticDir)).toBe("/static/images/placeholder_player.png");
-    expect(playerPhotoUrl(null, staticDir)).toBe("/static/images/placeholder_player.png");
+    expect(playerPhotoUrl(101, staticDir)).toBe(
+      "/static/images/players/p101.png",
+    );
+    expect(playerPhotoUrl(999, staticDir)).toBe(
+      "/static/images/placeholder_player.png",
+    );
+    expect(playerPhotoUrl(null, staticDir)).toBe(
+      "/static/images/placeholder_player.png",
+    );
     expect(teamBadgeUrl(1, staticDir)).toBe("/static/images/badges/t1.png");
-    expect(teamBadgeUrl(99, staticDir)).toBe("/static/images/placeholder_badge.png");
-    expect(teamBadgeUrl(null, staticDir)).toBe("/static/images/placeholder_badge.png");
+    expect(teamBadgeUrl(99, staticDir)).toBe(
+      "/static/images/placeholder_badge.png",
+    );
+    expect(teamBadgeUrl(null, staticDir)).toBe(
+      "/static/images/placeholder_badge.png",
+    );
   });
 });

@@ -1,0 +1,69 @@
+{
+  "result": {
+    "mode": "full_sync",
+    "players_synced": 0,
+    "requests_made": 4,
+    "errors": 1,
+    "warnings": ["Player 318: 404 Not Found"],
+    "summary": "mode=full_sync players=0 requests=4 errors=1"
+  },
+  "db": {
+    "player_ids": [318],
+    "player_history": null,
+    "player_history_past": null,
+    "fixture": {
+      "fpl_id": 1,
+      "gameweek_fpl_id": 1,
+      "team_h_fpl_id": 14,
+      "team_a_fpl_id": 3,
+      "finished": 1,
+      "team_h_score": 1,
+      "team_a_score": 1,
+      "stats": [
+        {
+          "identifier": "goals_scored",
+          "h": [{ "value": 1, "element": 200 }],
+          "a": [{ "value": 1, "element": 150 }]
+        }
+      ]
+    },
+    "live": {
+      "player_fpl_id": 318,
+      "gameweek_fpl_id": 25,
+      "total_points": 12,
+      "in_dreamteam": 1,
+      "minutes": 90,
+      "influence": "60.2",
+      "expected_goals_conceded": "0.74",
+      "explain": [
+        {
+          "fixture": 290,
+          "stats": [
+            { "identifier": "minutes", "points": 2, "value": 90 },
+            { "identifier": "goals_scored", "points": 5, "value": 1 },
+            { "identifier": "assists", "points": 3, "value": 1 },
+            { "identifier": "bonus", "points": 3, "value": 3 }
+          ]
+        }
+      ]
+    },
+    "scrape_log": {
+      "mode": "full_sync",
+      "gameweek_fpl_id": null,
+      "status": "partial",
+      "players_scraped": 0,
+      "requests_made": 4,
+      "errors_encountered": 1,
+      "error_detail": null
+    },
+    "counts": {
+      "teams": 1,
+      "gameweeks": 2,
+      "players": 1,
+      "player_history": 0,
+      "player_history_past": 0,
+      "fixtures": 1,
+      "live_gameweek_stats": 1
+    }
+  }
+}

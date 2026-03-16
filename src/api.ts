@@ -1,23 +1,23 @@
-import { getLogger } from './logger.ts';
-import { FPLScraper } from './scraper.ts';
-import type { DiscoveryEntry, DiscoveryResult } from './types.ts';
+import { getLogger } from "./logger.ts";
+import { FPLScraper } from "./scraper.ts";
+import type { DiscoveryEntry, DiscoveryResult } from "./types.ts";
 
-const logger = getLogger('src.api');
+const logger = getLogger("src.api");
 
-type ScraperLike = Pick<FPLScraper, 'get'>;
+type ScraperLike = Pick<FPLScraper, "get">;
 
 type ApiPayload = unknown;
 type ApiListPayload = unknown[];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function summarizeDiscoveryValue(data: unknown): DiscoveryEntry | null {
   if (isRecord(data)) {
     return {
       keys: Object.keys(data),
-      type: 'dict',
+      type: "dict",
     };
   }
 
@@ -26,7 +26,7 @@ function summarizeDiscoveryValue(data: unknown): DiscoveryEntry | null {
     return {
       length: data.length,
       sample_keys: isRecord(firstItem) ? Object.keys(firstItem) : [],
-      type: 'list',
+      type: "list",
     };
   }
 
@@ -49,41 +49,49 @@ export class FPLAPI {
   }
 
   async getBootstrapStatic(): Promise<ApiPayload> {
-    logger.debug('Fetching bootstrap-static');
-    return await this.#scraper.get('bootstrap-static');
+    logger.debug("Fetching bootstrap-static");
+    return await this.#scraper.get("bootstrap-static");
   }
 
   async getElementSummary(playerId: number): Promise<ApiPayload> {
-    logger.debug('Fetching element-summary for player %d', playerId);
+    logger.debug("Fetching element-summary for player %d", playerId);
     return await this.#scraper.get(`element-summary/${playerId}`);
   }
 
   async getEventLive(gameweek: number): Promise<ApiPayload> {
-    logger.debug('Fetching live stats for GW%d', gameweek);
+    logger.debug("Fetching live stats for GW%d", gameweek);
     return await this.#scraper.get(`event/${gameweek}/live`);
   }
 
   async getFixtures(gameweek?: number): Promise<ApiListPayload> {
-    logger.debug('Fetching fixtures%s', gameweek === undefined ? '' : ` for GW${gameweek}`);
+    logger.debug(
+      "Fetching fixtures%s",
+      gameweek === undefined ? "" : ` for GW${gameweek}`,
+    );
     const result =
       gameweek === undefined
-        ? await this.#scraper.get('fixtures')
-        : await this.#scraper.get('fixtures', { params: { event: gameweek } });
+        ? await this.#scraper.get("fixtures")
+        : await this.#scraper.get("fixtures", { params: { event: gameweek } });
     return Array.isArray(result) ? result : [];
   }
 
   async getMyTeam(entryId: number): Promise<ApiPayload> {
-    logger.debug('Fetching my-team for entry %d', entryId);
-    return await this.#scraper.get(`my-team/${entryId}`, { requiresAuth: true });
+    logger.debug("Fetching my-team for entry %d", entryId);
+    return await this.#scraper.get(`my-team/${entryId}`, {
+      requiresAuth: true,
+    });
   }
 
   async getEntry(entryId: number): Promise<ApiPayload> {
-    logger.debug('Fetching entry %d', entryId);
+    logger.debug("Fetching entry %d", entryId);
     return await this.#scraper.get(`entry/${entryId}`, { requiresAuth: true });
   }
 
-  async getEntryEventPicks(entryId: number, gameweek: number): Promise<ApiPayload> {
-    logger.debug('Fetching picks for entry %d GW%d', entryId, gameweek);
+  async getEntryEventPicks(
+    entryId: number,
+    gameweek: number,
+  ): Promise<ApiPayload> {
+    logger.debug("Fetching picks for entry %d GW%d", entryId, gameweek);
     return await this.#scraper.get(`entry/${entryId}/event/${gameweek}/picks`, {
       requiresAuth: true,
     });
@@ -92,7 +100,10 @@ export class FPLAPI {
   async discover(): Promise<DiscoveryResult> {
     const results: DiscoveryResult = {};
 
-    const probe = async (name: string, load: () => Promise<unknown>): Promise<void> => {
+    const probe = async (
+      name: string,
+      load: () => Promise<unknown>,
+    ): Promise<void> => {
       try {
         const summary = summarizeDiscoveryValue(await load());
         if (summary) {
@@ -103,23 +114,31 @@ export class FPLAPI {
       }
     };
 
-    await probe('bootstrap-static', async () => await this.getBootstrapStatic());
-    await probe('fixtures', async () => await this.getFixtures());
-    await probe('element-summary/1', async () => await this.getElementSummary(1));
+    await probe(
+      "bootstrap-static",
+      async () => await this.getBootstrapStatic(),
+    );
+    await probe("fixtures", async () => await this.getFixtures());
+    await probe(
+      "element-summary/1",
+      async () => await this.getElementSummary(1),
+    );
 
     try {
       const bootstrap = await this.getBootstrapStatic();
       const currentGameweek =
         isRecord(bootstrap) && Array.isArray(bootstrap.events)
-          ?
-              (bootstrap.events.find(
-                (event): event is Record<string, unknown> =>
-                  isRecord(event) && event.is_current === true,
-              )?.id as number | undefined) ?? 1
+          ? ((bootstrap.events.find(
+              (event): event is Record<string, unknown> =>
+                isRecord(event) && event.is_current === true,
+            )?.id as number | undefined) ?? 1)
           : 1;
-      await probe(`event/${currentGameweek}/live`, async () => await this.getEventLive(currentGameweek));
+      await probe(
+        `event/${currentGameweek}/live`,
+        async () => await this.getEventLive(currentGameweek),
+      );
     } catch (error) {
-      results['event/live'] = { error: describeError(error) };
+      results["event/live"] = { error: describeError(error) };
     }
 
     return results;

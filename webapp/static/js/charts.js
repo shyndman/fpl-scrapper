@@ -4,29 +4,37 @@
  */
 
 const FPL_COLORS = [
-  '#00ff87', '#38bdf8', '#f97316', '#a78bfa', '#fb7185',
-  '#fbbf24', '#34d399', '#e879f9', '#60a5fa', '#f87171',
+  "#00ff87",
+  "#38bdf8",
+  "#f97316",
+  "#a78bfa",
+  "#fb7185",
+  "#fbbf24",
+  "#34d399",
+  "#e879f9",
+  "#60a5fa",
+  "#f87171",
 ];
 
 const CHART_DEFAULTS = {
   responsive: true,
   maintainAspectRatio: true,
-  animation: { duration: 600, easing: 'easeInOutQuart' },
+  animation: { duration: 600, easing: "easeInOutQuart" },
   plugins: {
     legend: {
       labels: {
-        color: '#94a3b8',
-        font: { family: 'Inter, system-ui, sans-serif', size: 12 },
+        color: "#94a3b8",
+        font: { family: "Inter, system-ui, sans-serif", size: 12 },
         boxWidth: 12,
         padding: 16,
       },
     },
     tooltip: {
-      backgroundColor: '#0f1729',
-      borderColor: '#1e2d4a',
+      backgroundColor: "#0f1729",
+      borderColor: "#1e2d4a",
       borderWidth: 1,
-      titleColor: '#e2e8f0',
-      bodyColor: '#94a3b8',
+      titleColor: "#e2e8f0",
+      bodyColor: "#94a3b8",
       padding: 10,
       cornerRadius: 6,
     },
@@ -35,12 +43,12 @@ const CHART_DEFAULTS = {
 
 const SCALE_DEFAULTS = {
   x: {
-    grid: { color: 'rgba(30,45,74,0.5)', drawBorder: false },
-    ticks: { color: '#64748b', font: { size: 11 } },
+    grid: { color: "rgba(30,45,74,0.5)", drawBorder: false },
+    ticks: { color: "#64748b", font: { size: 11 } },
   },
   y: {
-    grid: { color: 'rgba(30,45,74,0.5)', drawBorder: false },
-    ticks: { color: '#64748b', font: { size: 11 } },
+    grid: { color: "rgba(30,45,74,0.5)", drawBorder: false },
+    ticks: { color: "#64748b", font: { size: 11 } },
   },
 };
 
@@ -56,7 +64,7 @@ function createLineChart(canvasId, labels, datasets) {
   const styledDatasets = datasets.map((ds, i) => ({
     ...ds,
     borderColor: ds.borderColor || FPL_COLORS[i % FPL_COLORS.length],
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     borderWidth: 2.5,
     pointBackgroundColor: ds.borderColor || FPL_COLORS[i % FPL_COLORS.length],
     pointRadius: 3,
@@ -67,7 +75,7 @@ function createLineChart(canvasId, labels, datasets) {
   }));
 
   return new Chart(ctx, {
-    type: 'line',
+    type: "line",
     data: { labels, datasets: styledDatasets },
     options: {
       ...CHART_DEFAULTS,
@@ -87,7 +95,8 @@ function createBarChart(canvasId, labels, datasets, horizontal = false) {
 
   const styledDatasets = datasets.map((ds, i) => ({
     ...ds,
-    backgroundColor: (ds.borderColor || FPL_COLORS[i % FPL_COLORS.length]) + 'bb',
+    backgroundColor:
+      (ds.borderColor || FPL_COLORS[i % FPL_COLORS.length]) + "bb",
     borderColor: ds.borderColor || FPL_COLORS[i % FPL_COLORS.length],
     borderWidth: 1,
     borderRadius: 4,
@@ -95,11 +104,11 @@ function createBarChart(canvasId, labels, datasets, horizontal = false) {
   }));
 
   return new Chart(ctx, {
-    type: 'bar',
+    type: "bar",
     data: { labels, datasets: styledDatasets },
     options: {
       ...CHART_DEFAULTS,
-      indexAxis: horizontal ? 'y' : 'x',
+      indexAxis: horizontal ? "y" : "x",
       scales: SCALE_DEFAULTS,
     },
   });
@@ -119,7 +128,7 @@ function createRadarChart(canvasId, labels, datasets) {
     return {
       ...ds,
       borderColor: col,
-      backgroundColor: col + '22',
+      backgroundColor: col + "22",
       borderWidth: 2,
       pointBackgroundColor: col,
       pointRadius: 3,
@@ -127,16 +136,20 @@ function createRadarChart(canvasId, labels, datasets) {
   });
 
   return new Chart(ctx, {
-    type: 'radar',
+    type: "radar",
     data: { labels, datasets: styledDatasets },
     options: {
       ...CHART_DEFAULTS,
       scales: {
         r: {
-          grid: { color: 'rgba(30,45,74,0.7)' },
-          angleLines: { color: 'rgba(30,45,74,0.7)' },
-          ticks: { color: '#64748b', backdropColor: 'transparent', font: { size: 10 } },
-          pointLabels: { color: '#94a3b8', font: { size: 11 } },
+          grid: { color: "rgba(30,45,74,0.7)" },
+          angleLines: { color: "rgba(30,45,74,0.7)" },
+          ticks: {
+            color: "#64748b",
+            backdropColor: "transparent",
+            font: { size: 10 },
+          },
+          pointLabels: { color: "#94a3b8", font: { size: 11 } },
         },
       },
     },
@@ -155,20 +168,22 @@ function createDoughnutChart(canvasId, labels, data, colors) {
   const palette = colors || FPL_COLORS;
 
   return new Chart(ctx, {
-    type: 'doughnut',
+    type: "doughnut",
     data: {
       labels,
-      datasets: [{
-        data,
-        backgroundColor: palette.map(c => c + 'cc'),
-        borderColor: palette,
-        borderWidth: 1,
-        hoverOffset: 6,
-      }],
+      datasets: [
+        {
+          data,
+          backgroundColor: palette.map((c) => c + "cc"),
+          borderColor: palette,
+          borderWidth: 1,
+          hoverOffset: 6,
+        },
+      ],
     },
     options: {
       ...CHART_DEFAULTS,
-      cutout: '65%',
+      cutout: "65%",
     },
   });
 }
@@ -180,5 +195,5 @@ function updateChartData(chart, labels, datasets) {
   if (!chart) return;
   chart.data.labels = labels;
   chart.data.datasets = datasets;
-  chart.update('active');
+  chart.update("active");
 }

@@ -4,73 +4,70 @@ Scrapes player statistics from the [Fantasy Premier League](https://fantasy.prem
 
 ## Components
 
-| Component | Location | Purpose |
-|---|---|---|
-| **Scraper** | `src/` | Fetches player/team data from the FPL API; writes to `data/fpl.db` |
+| Component     | Location  | Purpose                                                             |
+| ------------- | --------- | ------------------------------------------------------------------- |
+| **Scraper**   | `src/`    | Fetches player/team data from the FPL API; writes to `data/fpl.db`  |
 | **Dashboard** | `webapp/` | Local web app that reads `data/fpl.db` and displays it in a browser |
 
 ## Scraper Quick Start
 
 ```bash
-# 1. Create a virtual environment
-python3 -m venv .venv && source .venv/bin/activate
+# 1. Install Node dependencies
+npm install
 
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Configure credentials
+# 2. Configure credentials
 cp config/.env.example .env
 # Edit .env and add your FPL login email + password
 
-# 4. First-time full scrape (~700 players, 30–40 min)
-python -m src.main --full-sync
+# 3. First-time full scrape (~700 players, 30–40 min)
+npm run cli -- --full-sync
 
-# 5. Check results
+# 4. Check results
 sqlite3 data/fpl.db "SELECT web_name, total_points FROM players ORDER BY total_points DESC LIMIT 10;"
 ```
 
 ## Dashboard Quick Start
 
 ```bash
-# 1. Install webapp dependencies (in same venv)
-pip install -r webapp/requirements.txt
+# 1. Start the server from the project root
+npm run web
 
-# 2. Start the server
-python -m webapp
-
-# 3. Open http://127.0.0.1:8000 in your browser
+# 2. Open http://127.0.0.1:8292 in your browser
 ```
 
 ## Scraper Commands
 
-| Command | Purpose |
-|---|---|
-| `python -m src.main --full-sync` | Full scrape — all players and history |
-| `python -m src.main --current-gameweek` | Incremental update for the current GW |
-| `python -m src.main --gameweek 25` | Re-run a specific gameweek |
-| `python -m src.main --discover-api` | Probe API endpoints, print structure |
-| `python -m src.main --full-sync --dry-run` | Fetch data, do NOT write to DB |
-| `python -m src.main --gameweek 25 --log-level DEBUG` | Verbose logging |
+| Command                                                       | Purpose                               |
+| ------------------------------------------------------------- | ------------------------------------- |
+| `npm run cli -- --full-sync`                                  | Full scrape — all players and history |
+| `npm run cli -- --current-gameweek`                           | Incremental update for the current GW |
+| `npm run cli -- --gameweek 25`                                | Re-run a specific gameweek            |
+| `npm run cli -- --discover-api`                               | Probe API endpoints, print structure  |
+| `npm run cli -- --full-sync --dry-run`                        | Fetch data, do NOT write to DB        |
+| `npm run cli -- --gameweek 25 --log-level DEBUG`              | Verbose logging                       |
+| `npm test`                                                    | Run the Vitest suite                  |
+| `npm run lint && npm run typecheck && npx prettier --check .` | Quality checks before a commit        |
 
 ## Scraper Exit Codes
 
-| Code | Meaning |
-|---|---|
-| `0` | All data synced successfully |
-| `1` | Partial success — some players failed, re-run is safe |
-| `2` | Fatal error — auth failure, DB unreachable, or network down |
+| Code | Meaning                                                     |
+| ---- | ----------------------------------------------------------- |
+| `0`  | All data synced successfully                                |
+| `1`  | Partial success — some players failed, re-run is safe       |
+| `2`  | Fatal error — auth failure, DB unreachable, or network down |
 
 ## Project Structure
 
 ```
 fpl-web-scrapper/
-├── src/            # Scraper source (HTTP client, API wrappers, DB writes, sync logic)
-├── webapp/         # Dashboard web app (FastAPI, Jinja2 templates, Chart.js)
-├── config/         # Settings and .env template
-├── docs/           # Reference documentation
-├── tests/          # Pytest test suite (47 tests, runs offline)
-├── data/           # Runtime: SQLite database (git-ignored)
-└── logs/           # Runtime: log files (git-ignored)
+├── package.json      # npm scripts, runtime deps, dev tooling
+├── src/              # Scraper source (TypeScript CLI, API wrappers, DB writes, sync logic)
+├── webapp/           # Dashboard web app (Fastify, Nunjucks templates, static assets)
+├── config/           # settings.ts and .env template
+├── docs/             # Reference documentation
+├── tests/            # Vitest suite with offline fixtures and webapp coverage
+├── data/             # Runtime: SQLite database (git-ignored)
+└── logs/             # Runtime: log files (git-ignored)
 ```
 
 ## Further Reading

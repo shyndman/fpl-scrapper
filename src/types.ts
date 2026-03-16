@@ -13,12 +13,12 @@ export interface PersistedSession {
 }
 
 export interface DiscoveryDictEntry {
-  type: 'dict';
+  type: "dict";
   keys: string[];
 }
 
 export interface DiscoveryListEntry {
-  type: 'list';
+  type: "list";
   length: number;
   sample_keys: string[];
 }
@@ -27,7 +27,10 @@ export interface DiscoveryErrorEntry {
   error: string;
 }
 
-export type DiscoveryEntry = DiscoveryDictEntry | DiscoveryListEntry | DiscoveryErrorEntry;
+export type DiscoveryEntry =
+  | DiscoveryDictEntry
+  | DiscoveryListEntry
+  | DiscoveryErrorEntry;
 
 /** Map of probed endpoint names to their summarized discovery result. */
 export interface DiscoveryResult {

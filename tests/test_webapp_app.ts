@@ -29,7 +29,7 @@ async function importAppModule() {
 
 function normalizeTemplateForStandaloneRender(source: string): string {
   return source
-    .replace('{% extends "base.html" %}\n\n', "")
+    .replace(/\{%-?\s*extends\s+"base\.html"\s*-?%\}\s*/u, "")
     .replaceAll("{% block content %}", "")
     .replaceAll("{% block scripts %}", "")
     .replaceAll("{% endblock %}", "");
@@ -63,7 +63,9 @@ describe("webapp/app.ts", () => {
   it("raises until the app factory has initialized template access", async () => {
     const appModule = await importAppModule();
 
-    expect(() => appModule.getTemplates()).toThrow(/Templates not initialised/u);
+    expect(() => appModule.getTemplates()).toThrow(
+      /Templates not initialised/u,
+    );
   });
 
   it("initializes template filters/globals and Fastify view/static support", async () => {
@@ -93,6 +95,12 @@ describe("webapp/app.ts", () => {
     await app.ready();
     expect(app.hasReplyDecorator("view")).toBe(true);
     expect(app.hasReplyDecorator("sendFile")).toBe(true);
+
+    const routeSummary = app.printRoutes();
+    expect(routeSummary).toContain("api/");
+    expect(routeSummary).toContain("overview (GET, HEAD)");
+    expect(routeSummary).toContain(":fplId (GET, HEAD)");
+    expect(routeSummary).toContain("compare (GET, HEAD)");
   });
 
   it("renders the translated team templates with the configured nunjucks environment", async () => {
@@ -101,9 +109,15 @@ describe("webapp/app.ts", () => {
     APPS.push(app);
 
     const templateEnv = appModule.getTemplates() as unknown as {
-      renderString: (source: string, context: Record<string, unknown>) => string;
+      renderString: (
+        source: string,
+        context: Record<string, unknown>,
+      ) => string;
     };
-    const renderTemplate = (name: string, context: Record<string, unknown>): string => {
+    const renderTemplate = (
+      name: string,
+      context: Record<string, unknown>,
+    ): string => {
       const source = readFileSync(join(appModule._TEMPLATES_DIR, name), "utf8");
       return templateEnv.renderString(
         normalizeTemplateForStandaloneRender(source),
@@ -182,7 +196,42 @@ describe("webapp/app.ts", () => {
     expect(teamDetailHtml).toContain("status-dot");
     expect(teamDetailHtml).toContain("const team = {");
 
-    expect(renderTemplate("compare.html", {})).toContain("function compareApp()");
+    expect(renderTemplate("compare.html", {})).toContain(
+      "function compareApp()",
+    );
+  });
+
+  it("keeps the CDN hooks in the base template and serves static assets from Fastify", async () => {
+    const appModule = await importAppModule();
+    const app = appModule.createApp("/tmp/explicit.db");
+    APPS.push(app);
+
+    const baseTemplate = readFileSync(
+      join(appModule._TEMPLATES_DIR, "base.html"),
+      "utf8",
+    );
+    expect(baseTemplate).toContain("https://cdn.tailwindcss.com");
+    expect(baseTemplate).toContain(
+      "https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js",
+    );
+    expect(baseTemplate).toContain(
+      "https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js",
+    );
+    expect(baseTemplate).toContain("/static/css/app.css");
+    expect(baseTemplate).toContain("/static/js/charts.js");
+
+    await app.ready();
+
+    await expect(
+      app.inject({ method: "GET", url: "/static/css/app.css" }),
+    ).resolves.toMatchObject({
+      statusCode: 200,
+    });
+    await expect(
+      app.inject({ method: "GET", url: "/static/js/charts.js" }),
+    ).resolves.toMatchObject({
+      statusCode: 200,
+    });
   });
 
   it("prefers an explicit db path, then env, then the default path", async () => {
@@ -208,7 +257,9 @@ describe("webapp/app.ts", () => {
 
   it("configures the db and starts image sync without blocking startup", async () => {
     const downloadControl = Promise.withResolvers<void>();
-    runtime.downloadImages.mockImplementation(async () => downloadControl.promise);
+    runtime.downloadImages.mockImplementation(
+      async () => downloadControl.promise,
+    );
 
     const appModule = await importAppModule();
     const app = appModule.createApp("/tmp/app.db");

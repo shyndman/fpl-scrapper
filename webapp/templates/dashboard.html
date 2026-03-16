@@ -1,69 +1,92 @@
-{% extends "base.html" %}
-
-{% block content %}
+{% extends "base.html" %} {% block content %}
 <div class="py-8">
-
   <!-- Page Header -->
   <div class="mb-8">
     <h1 class="text-3xl font-bold mb-1">
       <span class="gradient-text">Dashboard</span>
     </h1>
     {% if overview.current_gameweek %}
-    <p style="color:#64748b;" class="text-sm">
-      {{ overview.current_gameweek.name }} ·
-      {{ overview.player_count }} players · {{ overview.team_count }} teams
+    <p style="color: #64748b" class="text-sm">
+      {{ overview.current_gameweek.name }} · {{ overview.player_count }} players
+      · {{ overview.team_count }} teams
     </p>
     {% endif %}
   </div>
 
   <!-- GW Summary Strip -->
-  {% if overview.current_gameweek %}
-  {% set gw = overview.current_gameweek %}
+  {% if overview.current_gameweek %} {% set gw = overview.current_gameweek %}
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-
     <div class="card p-5">
-      <p class="text-xs font-semibold uppercase tracking-widest mb-1" style="color:#64748b;">Avg Score</p>
-      <p class="text-3xl font-bold stat-num" style="color:#00ff87;">{{ gw.average_entry_score or '—' }}</p>
-      <p class="text-xs mt-1" style="color:#64748b;">{{ gw.name }}</p>
-    </div>
-
-    <div class="card p-5">
-      <p class="text-xs font-semibold uppercase tracking-widest mb-1" style="color:#64748b;">Highest Score</p>
-      <p class="text-3xl font-bold stat-num" style="color:#38bdf8;">{{ gw.highest_score or '—' }}</p>
-      <p class="text-xs mt-1" style="color:#64748b;">top manager</p>
-    </div>
-
-    <div class="card p-5">
-      <p class="text-xs font-semibold uppercase tracking-widest mb-1" style="color:#64748b;">Transfers Made</p>
-      <p class="text-3xl font-bold stat-num" style="color:#e2e8f0;">
-        {% if gw.transfers_made %}{{ gw.transfers_made.toLocaleString() }}{% else %}—{% endif %}
+      <p
+        class="text-xs font-semibold uppercase tracking-widest mb-1"
+        style="color: #64748b"
+      >
+        Avg Score
       </p>
-      <p class="text-xs mt-1" style="color:#64748b;">this gameweek</p>
+      <p class="text-3xl font-bold stat-num" style="color: #00ff87">
+        {{ gw.average_entry_score or '—' }}
+      </p>
+      <p class="text-xs mt-1" style="color: #64748b">{{ gw.name }}</p>
     </div>
 
     <div class="card p-5">
-      <p class="text-xs font-semibold uppercase tracking-widest mb-1" style="color:#64748b;">Status</p>
+      <p
+        class="text-xs font-semibold uppercase tracking-widest mb-1"
+        style="color: #64748b"
+      >
+        Highest Score
+      </p>
+      <p class="text-3xl font-bold stat-num" style="color: #38bdf8">
+        {{ gw.highest_score or '—' }}
+      </p>
+      <p class="text-xs mt-1" style="color: #64748b">top manager</p>
+    </div>
+
+    <div class="card p-5">
+      <p
+        class="text-xs font-semibold uppercase tracking-widest mb-1"
+        style="color: #64748b"
+      >
+        Transfers Made
+      </p>
+      <p class="text-3xl font-bold stat-num" style="color: #e2e8f0">
+        {% if gw.transfers_made %}{{ gw.transfers_made.toLocaleString() }}{%
+        else %}—{% endif %}
+      </p>
+      <p class="text-xs mt-1" style="color: #64748b">this gameweek</p>
+    </div>
+
+    <div class="card p-5">
+      <p
+        class="text-xs font-semibold uppercase tracking-widest mb-1"
+        style="color: #64748b"
+      >
+        Status
+      </p>
       <p class="text-lg font-bold">
         {% if gw.is_finished %}
-          <span style="color:#34d399;">Finished</span>
+        <span style="color: #34d399">Finished</span>
         {% elif gw.is_current %}
-          <span style="color:#fbbf24;">Live</span>
+        <span style="color: #fbbf24">Live</span>
         {% else %}
-          <span style="color:#64748b;">Upcoming</span>
+        <span style="color: #64748b">Upcoming</span>
         {% endif %}
       </p>
-      <p class="text-xs mt-1" style="color:#64748b;">{% if gw.deadline_time %}{{ gw.deadline_time.slice(0, 10) }}{% else %}—{% endif %}</p>
+      <p class="text-xs mt-1" style="color: #64748b">
+        {% if gw.deadline_time %}{{ gw.deadline_time.slice(0, 10) }}{% else
+        %}—{% endif %}
+      </p>
     </div>
-
   </div>
   {% endif %}
 
   <!-- Top Performers -->
   <div class="mb-10">
-    <h2 class="text-lg font-bold mb-4" style="color:#e2e8f0;">
-      Top Performers
-      {% if overview.current_gameweek %}
-      <span class="text-sm font-normal ml-2" style="color:#64748b;">{{ overview.current_gameweek.name }}</span>
+    <h2 class="text-lg font-bold mb-4" style="color: #e2e8f0">
+      Top Performers {% if overview.current_gameweek %}
+      <span class="text-sm font-normal ml-2" style="color: #64748b"
+        >{{ overview.current_gameweek.name }}</span
+      >
       {% endif %}
     </h2>
 
@@ -87,23 +110,33 @@
           </thead>
           <tbody>
             {% for p in overview.top_players %}
-            <tr class="cursor-pointer" onclick="location.href='/players/{{ p.fpl_id }}'">
-              <td class="stat-num" style="color:#64748b;">{{ loop.index }}</td>
+            <tr
+              class="cursor-pointer"
+              onclick="location.href='/players/{{ p.fpl_id }}'"
+            >
+              <td class="stat-num" style="color: #64748b">{{ loop.index }}</td>
               <td>
                 <div class="flex items-center gap-3">
-                  <img src="{{ player_photo_url(p.code) }}"
-                       alt="{{ p.web_name }}"
-                       class="w-8 h-10 object-cover object-top rounded"
-                       onerror="this.src='/static/images/placeholder_player.png'" />
+                  <img
+                    src="{{ player_photo_url(p.code) }}"
+                    alt="{{ p.web_name }}"
+                    class="w-8 h-10 object-cover object-top rounded"
+                    onerror="this.src = '/static/images/placeholder_player.png'"
+                  />
                   <span class="font-medium text-sm">{{ p.web_name }}</span>
                 </div>
               </td>
               <td>
                 <div class="flex items-center gap-2">
-                  <img src="{{ team_badge_url(p.team_fpl_id) }}"
-                       alt="" class="w-5 h-5 object-contain"
-                       onerror="this.src='/static/images/placeholder_badge.png'" />
-                  <span class="text-sm" style="color:#94a3b8;">{{ p.team_short }}</span>
+                  <img
+                    src="{{ team_badge_url(p.team_fpl_id) }}"
+                    alt=""
+                    class="w-5 h-5 object-contain"
+                    onerror="this.src = '/static/images/placeholder_badge.png'"
+                  />
+                  <span class="text-sm" style="color: #94a3b8"
+                    >{{ p.team_short }}</span
+                  >
                 </div>
               </td>
               <td>
@@ -111,12 +144,16 @@
                   {{ p.element_type | position_name }}
                 </span>
               </td>
-              <td class="text-right font-bold stat-num" style="color:#00ff87;">{{ p.total_points }}</td>
+              <td class="text-right font-bold stat-num" style="color: #00ff87">
+                {{ p.total_points }}
+              </td>
               <td class="text-right stat-num">{{ p.goals_scored or 0 }}</td>
               <td class="text-right stat-num">{{ p.assists or 0 }}</td>
               <td class="text-right stat-num">{{ p.clean_sheets or 0 }}</td>
               <td class="text-right stat-num">{{ p.bonus or 0 }}</td>
-              <td class="text-right stat-num" style="color:#64748b;">{{ p.minutes or 0 }}</td>
+              <td class="text-right stat-num" style="color: #64748b">
+                {{ p.minutes or 0 }}
+              </td>
             </tr>
             {% endfor %}
           </tbody>
@@ -124,13 +161,24 @@
       </div>
     </div>
     {% else %}
-    <div class="card p-8 text-center" style="color:#64748b;">
-      <svg class="w-10 h-10 mx-auto mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    <div class="card p-8 text-center" style="color: #64748b">
+      <svg
+        class="w-10 h-10 mx-auto mb-3 opacity-30"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.5"
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        />
       </svg>
       <p class="text-sm">No gameweek data yet. Run the scraper first.</p>
-      <code class="text-xs mt-2 block" style="color:#38bdf8;">python -m src.main --current-gameweek</code>
+      <code class="text-xs mt-2 block" style="color: #38bdf8"
+        >python -m src.main --current-gameweek</code
+      >
     </div>
     {% endif %}
   </div>
@@ -139,26 +187,39 @@
   <div class="mb-10">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold">All Teams</h2>
-      <a href="/teams" class="text-sm font-medium transition-colors hover:underline" style="color:#38bdf8;">View all →</a>
+      <a
+        href="/teams"
+        class="text-sm font-medium transition-colors hover:underline"
+        style="color: #38bdf8"
+        >View all →</a
+      >
     </div>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+    <div
+      class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
+    >
       {% for team in teams %}
-      <a href="/teams/{{ team.fpl_id }}"
-         class="card card-clickable p-4 flex flex-col items-center gap-2 text-center no-underline">
-        <img src="{{ team_badge_url(team.fpl_id) }}"
-             alt="{{ team.name }}"
-             class="badge-img-lg"
-             onerror="this.src='/static/images/placeholder_badge.png'" />
+      <a
+        href="/teams/{{ team.fpl_id }}"
+        class="card card-clickable p-4 flex flex-col items-center gap-2 text-center no-underline"
+      >
+        <img
+          src="{{ team_badge_url(team.fpl_id) }}"
+          alt="{{ team.name }}"
+          class="badge-img-lg"
+          onerror="this.src = '/static/images/placeholder_badge.png'"
+        />
         <p class="font-semibold text-sm leading-tight">{{ team.short_name }}</p>
-        <p class="text-xs" style="color:#64748b;">{{ team.name }}</p>
+        <p class="text-xs" style="color: #64748b">{{ team.name }}</p>
         <div class="w-full mt-1">
-          <div class="flex justify-between text-xs mb-1" style="color:#64748b;">
+          <div class="flex justify-between text-xs mb-1" style="color: #64748b">
             <span>Strength</span>
             <span>{{ team.strength or '?' }}/5</span>
           </div>
-          <div class="h-1 rounded-full" style="background:#1e2d4a;">
-            <div class="strength-bar-fill"
-                 style="width:{{ ((team.strength or 0) / 5 * 100)|round }}%;"></div>
+          <div class="h-1 rounded-full" style="background: #1e2d4a">
+            <div
+              class="strength-bar-fill"
+              style="width:{{ ((team.strength or 0) / 5 * 100)|round }}%;"
+            ></div>
           </div>
         </div>
       </a>
@@ -167,34 +228,39 @@
   </div>
 
   <!-- Last Scrape Status -->
-  {% if overview.last_scrape %}
-  {% set sc = overview.last_scrape %}
+  {% if overview.last_scrape %} {% set sc = overview.last_scrape %}
   <div class="card p-4 flex items-center gap-4 text-sm">
     <div class="flex-shrink-0">
       {% if sc.status == 'success' %}
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-              style="background:rgba(52,211,153,0.12); color:#34d399;">
-          <span class="status-dot available"></span> Success
-        </span>
+      <span
+        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+        style="background: rgba(52, 211, 153, 0.12); color: #34d399"
+      >
+        <span class="status-dot available"></span> Success
+      </span>
       {% elif sc.status == 'running' %}
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-              style="background:rgba(251,191,36,0.12); color:#fbbf24;">
-          <span class="status-dot doubt"></span> Running
-        </span>
+      <span
+        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+        style="background: rgba(251, 191, 36, 0.12); color: #fbbf24"
+      >
+        <span class="status-dot doubt"></span> Running
+      </span>
       {% else %}
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-              style="background:rgba(248,113,113,0.12); color:#f87171;">
-          <span class="status-dot injured"></span> {{ sc.status }}
-        </span>
+      <span
+        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+        style="background: rgba(248, 113, 113, 0.12); color: #f87171"
+      >
+        <span class="status-dot injured"></span> {{ sc.status }}
+      </span>
       {% endif %}
     </div>
-    <div style="color:#94a3b8;">
-      Last scrape · <strong style="color:#e2e8f0;">{{ sc.mode }}</strong> mode ·
-      started {% if sc.started_at %}{{ sc.started_at.slice(0, 19) | replace('T', ' ') }}{% else %}?{% endif %}
-      {% if sc.players_scraped %} · {{ sc.players_scraped }} players{% endif %}
+    <div style="color: #94a3b8">
+      Last scrape · <strong style="color: #e2e8f0">{{ sc.mode }}</strong> mode ·
+      started {% if sc.started_at %}{{ sc.started_at.slice(0, 19) | replace('T',
+      ' ') }}{% else %}?{% endif %} {% if sc.players_scraped %} · {{
+      sc.players_scraped }} players{% endif %}
     </div>
   </div>
   {% endif %}
-
 </div>
 {% endblock %}

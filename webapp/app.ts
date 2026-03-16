@@ -9,6 +9,8 @@ import nunjucks, { type Environment } from "nunjucks";
 import { getLogger } from "../src/logger.ts";
 import * as webappDb from "./db.ts";
 import { downloadImages, playerPhotoUrl, teamBadgeUrl } from "./images.ts";
+import { apiRoutes } from "./routers/api.ts";
+import { pageRoutes } from "./routers/pages.ts";
 
 const logger = getLogger("webapp.app");
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -114,7 +116,7 @@ export function getTemplates(): Environment {
   return templates;
 }
 
-/** Build the Fastify dashboard shell with shared template helpers and startup wiring for later route ports. */
+/** Build the Fastify dashboard shell with shared template helpers, routes, and startup wiring. */
 export function createApp(dbPath?: string): FastifyInstance {
   const resolvedDbPath = resolveDbPath(dbPath);
   templates = createTemplateEnvironment();
@@ -137,6 +139,9 @@ export function createApp(dbPath?: string): FastifyInstance {
       },
     },
   });
+
+  app.register(pageRoutes);
+  app.register(apiRoutes, { prefix: "/api" });
 
   app.addHook("onReady", async () => {
     logger.info("Configuring database: %s", resolvedDbPath);

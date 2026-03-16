@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -81,7 +80,13 @@ vi.mock("../webapp/images.ts", () => ({
 
 import { FPLDatabase } from "../src/database.ts";
 import { FPLNotFoundError } from "../src/errors.ts";
-import { type CliDeps, EXIT_FATAL, EXIT_PARTIAL, EXIT_SUCCESS, main } from "../src/main.ts";
+import {
+  type CliDeps,
+  EXIT_FATAL,
+  EXIT_PARTIAL,
+  EXIT_SUCCESS,
+  main,
+} from "../src/main.ts";
 import { FPLSyncer } from "../src/sync.ts";
 import {
   transform_bootstrap,
@@ -92,7 +97,7 @@ import {
 
 const TESTS_DIR = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = join(TESTS_DIR, "fixtures");
-const PYTHON_ORACLE = join(TESTS_DIR, "python_oracle.py");
+const ORACLES_DIR = join(TESTS_DIR, "oracles");
 const OPEN_DATABASES: FPLDatabase[] = [];
 const TEMP_DIRECTORIES: string[] = [];
 const APPS: FastifyInstance[] = [];
@@ -120,48 +125,13 @@ function createDatabase(): FPLDatabase {
 function normalizePageContext(
   context: Record<string, unknown>,
 ): Record<string, unknown> {
-  const { request: _request, ...rest } = context;
+  const rest = { ...context };
+  delete rest.request;
   return rest;
 }
 
-function execPython(command: string): string {
-  const candidates = ["python3", "python"];
-  let lastError: unknown;
-
-  for (const candidate of candidates) {
-    try {
-      return execFileSync(candidate, [PYTHON_ORACLE, command], {
-        cwd: dirname(TESTS_DIR),
-        encoding: "utf8",
-        env: {
-          ...process.env,
-          PYTHONPATH: dirname(TESTS_DIR),
-        },
-      });
-    } catch (error) {
-      if (
-        error &&
-        typeof error === "object" &&
-        "code" in error &&
-        (error as NodeJS.ErrnoException).code === "ENOENT"
-      ) {
-        lastError = error;
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  throw lastError ?? new Error("python executable not available");
-}
-
-function runPythonOracle<T>(command: string): T {
-  try {
-    return JSON.parse(execPython(command)) as T;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Python oracle failed for ${command}: ${message}`);
-  }
+function loadOracle<T>(filename: string): T {
+  return JSON.parse(readFileSync(join(ORACLES_DIR, filename), "utf8")) as T;
 }
 
 class FixtureBackedApi {
@@ -169,12 +139,10 @@ class FixtureBackedApi {
   readonly #bootstrap = loadFixture<Record<string, unknown>>(
     "bootstrap_static.json",
   );
-  readonly #fixtures = loadFixture<Array<Record<string, unknown>>>(
-    "fixtures.json",
-  );
-  readonly #eventLive = loadFixture<Record<string, unknown>>(
-    "event_25_live.json",
-  );
+  readonly #fixtures =
+    loadFixture<Array<Record<string, unknown>>>("fixtures.json");
+  readonly #eventLive =
+    loadFixture<Record<string, unknown>>("event_25_live.json");
   readonly #elementSummary = loadFixture<Record<string, unknown>>(
     "element_summary_318.json",
   );
@@ -231,7 +199,9 @@ function transformActualPayload(): Record<string, unknown> {
     25,
     loadFixture<Record<string, unknown>>("event_25_live.json"),
   );
-  const currentGameweek = gameweeks.find((gameweek) => gameweek.is_current === 1);
+  const currentGameweek = gameweeks.find(
+    (gameweek) => gameweek.is_current === 1,
+  );
   if (!currentGameweek) {
     throw new Error("Expected current gameweek in bootstrap fixture");
   }
@@ -362,7 +332,9 @@ function readSyncSnapshot(db: FPLDatabase): Record<string, unknown> {
         : {
             ...fixture,
             stats:
-              typeof fixture.stats === "string" ? JSON.parse(fixture.stats) : null,
+              typeof fixture.stats === "string"
+                ? JSON.parse(fixture.stats)
+                : null,
           },
     live:
       live === undefined
@@ -370,7 +342,9 @@ function readSyncSnapshot(db: FPLDatabase): Record<string, unknown> {
         : {
             ...live,
             explain:
-              typeof live.explain === "string" ? JSON.parse(live.explain) : null,
+              typeof live.explain === "string"
+                ? JSON.parse(live.explain)
+                : null,
           },
     scrape_log:
       (db._conn
@@ -379,13 +353,41 @@ function readSyncSnapshot(db: FPLDatabase): Record<string, unknown> {
         )
         .get() as Record<string, unknown> | undefined) ?? null,
     counts: {
-      teams: (db._conn.prepare("SELECT COUNT(*) AS count FROM teams").get() as { count: number }).count,
-      gameweeks: (db._conn.prepare("SELECT COUNT(*) AS count FROM gameweeks").get() as { count: number }).count,
-      players: (db._conn.prepare("SELECT COUNT(*) AS count FROM players").get() as { count: number }).count,
-      player_history: (db._conn.prepare("SELECT COUNT(*) AS count FROM player_history").get() as { count: number }).count,
-      player_history_past: (db._conn.prepare("SELECT COUNT(*) AS count FROM player_history_past").get() as { count: number }).count,
-      fixtures: (db._conn.prepare("SELECT COUNT(*) AS count FROM fixtures").get() as { count: number }).count,
-      live_gameweek_stats: (db._conn.prepare("SELECT COUNT(*) AS count FROM live_gameweek_stats").get() as { count: number }).count,
+      teams: (
+        db._conn.prepare("SELECT COUNT(*) AS count FROM teams").get() as {
+          count: number;
+        }
+      ).count,
+      gameweeks: (
+        db._conn.prepare("SELECT COUNT(*) AS count FROM gameweeks").get() as {
+          count: number;
+        }
+      ).count,
+      players: (
+        db._conn.prepare("SELECT COUNT(*) AS count FROM players").get() as {
+          count: number;
+        }
+      ).count,
+      player_history: (
+        db._conn
+          .prepare("SELECT COUNT(*) AS count FROM player_history")
+          .get() as { count: number }
+      ).count,
+      player_history_past: (
+        db._conn
+          .prepare("SELECT COUNT(*) AS count FROM player_history_past")
+          .get() as { count: number }
+      ).count,
+      fixtures: (
+        db._conn.prepare("SELECT COUNT(*) AS count FROM fixtures").get() as {
+          count: number;
+        }
+      ).count,
+      live_gameweek_stats: (
+        db._conn
+          .prepare("SELECT COUNT(*) AS count FROM live_gameweek_stats")
+          .get() as { count: number }
+      ).count,
     },
   };
 }
@@ -551,21 +553,21 @@ afterEach(async () => {
 
 describe("migrate-to-ts parity coverage", () => {
   it("matches Python transform outputs and derived fields for the checked-in fixtures", () => {
-    const oracle = runPythonOracle<Record<string, unknown>>("transform");
+    const oracle = loadOracle<Record<string, unknown>>("transform.json");
     const actual = transformActualPayload();
 
     expect(actual).toEqual(oracle);
   });
 
   it("matches Python full-sync result summaries and SQLite state on a successful run", async () => {
-    const oracle = runPythonOracle<Record<string, unknown>>("sync-success");
+    const oracle = loadOracle<Record<string, unknown>>("sync-success.json");
     const actual = await runTsFullSync({});
 
     expect(actual).toEqual(oracle);
   });
 
   it("matches Python partial-failure accounting and scrape-log outcomes", async () => {
-    const oracle = runPythonOracle<Record<string, unknown>>("sync-partial");
+    const oracle = loadOracle<Record<string, unknown>>("sync-partial.json");
     const actual = await runTsFullSync({ missingPlayerIds: [318] });
 
     expect(actual).toEqual(oracle);
@@ -573,27 +575,36 @@ describe("migrate-to-ts parity coverage", () => {
 
   it("keeps the CLI exit mapping characterized by the Python tests", async () => {
     await expect(
-      main(["--full-sync"], createCliDeps({
-        errors: 0,
-        playersSynced: 3,
-        summary: "mode=full_sync players=3 requests=12 errors=0",
-      })),
+      main(
+        ["--full-sync"],
+        createCliDeps({
+          errors: 0,
+          playersSynced: 3,
+          summary: "mode=full_sync players=3 requests=12 errors=0",
+        }),
+      ),
     ).resolves.toBe(EXIT_SUCCESS);
 
     await expect(
-      main(["--current-gameweek"], createCliDeps({
-        errors: 2,
-        playersSynced: 5,
-        summary: "mode=gameweek_sync gw=25 players=5 requests=9 errors=2",
-      })),
+      main(
+        ["--current-gameweek"],
+        createCliDeps({
+          errors: 2,
+          playersSynced: 5,
+          summary: "mode=gameweek_sync gw=25 players=5 requests=9 errors=2",
+        }),
+      ),
     ).resolves.toBe(EXIT_PARTIAL);
 
     await expect(
-      main(["--full-sync"], createCliDeps({
-        errors: 1,
-        playersSynced: 0,
-        summary: "mode=full_sync players=0 requests=4 errors=1",
-      })),
+      main(
+        ["--full-sync"],
+        createCliDeps({
+          errors: 1,
+          playersSynced: 0,
+          summary: "mode=full_sync players=0 requests=4 errors=1",
+        }),
+      ),
     ).resolves.toBe(EXIT_FATAL);
   });
 
@@ -627,7 +638,10 @@ describe("migrate-to-ts parity coverage", () => {
   });
 
   it("matches the Python-characterized players page context apart from framework request objects", async () => {
-    runtime.getPlayers.mockReturnValue([[{ fpl_id: 9, web_name: "Haaland" }], 81]);
+    runtime.getPlayers.mockReturnValue([
+      [{ fpl_id: 9, web_name: "Haaland" }],
+      81,
+    ]);
     runtime.getAllTeams.mockReturnValue([{ fpl_id: 2, name: "Man City" }]);
     runtime.getAllGameweeks.mockReturnValue([{ fpl_id: 1 }, { fpl_id: 2 }]);
 

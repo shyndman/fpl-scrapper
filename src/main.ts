@@ -1,22 +1,26 @@
-import { parseArgs } from 'node:util';
-import { pathToFileURL } from 'node:url';
+import { parseArgs } from "node:util";
+import { pathToFileURL } from "node:url";
 
-import type { Settings } from '../config/settings.ts';
-import { settings } from '../config/settings.ts';
-import { FPLAPI } from './api.ts';
-import { FPLAuth } from './auth.ts';
-import { FPLDatabase } from './database.ts';
-import { FPLAuthError } from './errors.ts';
-import { setupLogging } from './logger.ts';
-import { FPLScraper, type FPLScraperOptions, type ScraperAuth } from './scraper.ts';
-import { FPLSyncer } from './sync.ts';
+import type { Settings } from "../config/settings.ts";
+import { settings } from "../config/settings.ts";
+import { FPLAPI } from "./api.ts";
+import { FPLAuth } from "./auth.ts";
+import { FPLDatabase } from "./database.ts";
+import { FPLAuthError } from "./errors.ts";
+import { setupLogging } from "./logger.ts";
+import {
+  FPLScraper,
+  type FPLScraperOptions,
+  type ScraperAuth,
+} from "./scraper.ts";
+import { FPLSyncer } from "./sync.ts";
 
 export const EXIT_SUCCESS = 0;
 export const EXIT_PARTIAL = 1;
 export const EXIT_FATAL = 2;
 
-const VERSION = 'fpl-scraper 0.1.0';
-const LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR'] as const;
+const VERSION = "fpl-scraper 0.1.0";
+const LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR"] as const;
 const HELP_TEXT = `Fantasy Premier League player statistics scraper
 
 Usage:
@@ -95,7 +99,11 @@ export interface CliDeps {
   setupLogging(logLevel?: string, logFile?: string): LoggerLike;
   createDatabase(dbPath: string): DatabaseLike;
   createAuth(sessionFile: string, login: string, password: string): ScraperAuth;
-  createScraper(auth: ScraperAuth, baseUrl: string, options: FPLScraperOptions): FPLScraper;
+  createScraper(
+    auth: ScraperAuth,
+    baseUrl: string,
+    options: FPLScraperOptions,
+  ): FPLScraper;
   createApi(scraper: FPLScraper): DiscoveryApi;
   createSyncer(
     api: DiscoveryApi,
@@ -110,7 +118,7 @@ export interface CliDeps {
 class CliUsageError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'CliUsageError';
+    this.name = "CliUsageError";
   }
 }
 
@@ -120,12 +128,16 @@ function isLogLevel(value: string): value is LogLevel {
 
 function parseGameweek(rawGameweek: string): number {
   if (!/^\d+$/u.test(rawGameweek)) {
-    throw new CliUsageError(`--gameweek expects a positive integer, received ${JSON.stringify(rawGameweek)}`);
+    throw new CliUsageError(
+      `--gameweek expects a positive integer, received ${JSON.stringify(rawGameweek)}`,
+    );
   }
 
   const gameweek = Number.parseInt(rawGameweek, 10);
   if (gameweek <= 0) {
-    throw new CliUsageError(`--gameweek expects a positive integer, received ${JSON.stringify(rawGameweek)}`);
+    throw new CliUsageError(
+      `--gameweek expects a positive integer, received ${JSON.stringify(rawGameweek)}`,
+    );
   }
 
   return gameweek;
@@ -136,8 +148,10 @@ function createDefaultDeps(): CliDeps {
     settings,
     setupLogging,
     createDatabase: (dbPath) => new FPLDatabase(dbPath),
-    createAuth: (sessionFile, login, password) => new FPLAuth(sessionFile, login, password),
-    createScraper: (auth, baseUrl, options) => new FPLScraper(auth, baseUrl, options),
+    createAuth: (sessionFile, login, password) =>
+      new FPLAuth(sessionFile, login, password),
+    createScraper: (auth, baseUrl, options) =>
+      new FPLScraper(auth, baseUrl, options),
     createApi: (scraper) => new FPLAPI(scraper),
     createSyncer: (api, db, dryRun, getRequestCount) =>
       new FPLSyncer(api as FPLAPI, db as FPLDatabase, dryRun, getRequestCount),
@@ -157,41 +171,52 @@ export function buildParser(): Parser {
         args: [...argv],
         allowPositionals: false,
         options: {
-          'full-sync': { type: 'boolean' },
-          'current-gameweek': { type: 'boolean' },
-          gameweek: { type: 'string' },
-          'discover-api': { type: 'boolean' },
-          'db-path': { type: 'string' },
-          'log-level': { type: 'string' },
-          'dry-run': { type: 'boolean' },
-          version: { type: 'boolean' },
-          help: { type: 'boolean', short: 'h' },
+          "full-sync": { type: "boolean" },
+          "current-gameweek": { type: "boolean" },
+          gameweek: { type: "string" },
+          "discover-api": { type: "boolean" },
+          "db-path": { type: "string" },
+          "log-level": { type: "string" },
+          "dry-run": { type: "boolean" },
+          version: { type: "boolean" },
+          help: { type: "boolean", short: "h" },
         },
         strict: true,
       });
 
       const help = values.help === true;
       const version = values.version === true;
-      const fullSync = values['full-sync'] === true;
-      const currentGameweek = values['current-gameweek'] === true;
-      const discoverApi = values['discover-api'] === true;
+      const fullSync = values["full-sync"] === true;
+      const currentGameweek = values["current-gameweek"] === true;
+      const discoverApi = values["discover-api"] === true;
       const gameweek =
-        typeof values.gameweek === 'string' ? parseGameweek(values.gameweek) : null;
-      const dbPath = typeof values['db-path'] === 'string' ? values['db-path'] : null;
-      const dryRun = values['dry-run'] === true;
-      const rawLogLevel = typeof values['log-level'] === 'string' ? values['log-level'] : settings.LOG_LEVEL;
+        typeof values.gameweek === "string"
+          ? parseGameweek(values.gameweek)
+          : null;
+      const dbPath =
+        typeof values["db-path"] === "string" ? values["db-path"] : null;
+      const dryRun = values["dry-run"] === true;
+      const rawLogLevel =
+        typeof values["log-level"] === "string"
+          ? values["log-level"]
+          : settings.LOG_LEVEL;
 
       if (!isLogLevel(rawLogLevel)) {
         throw new CliUsageError(
-          `--log-level must be one of ${LOG_LEVELS.join(', ')}, received ${JSON.stringify(rawLogLevel)}`,
+          `--log-level must be one of ${LOG_LEVELS.join(", ")}, received ${JSON.stringify(rawLogLevel)}`,
         );
       }
 
       if (!help && !version) {
-        const enabledModes = [fullSync, currentGameweek, gameweek !== null, discoverApi].filter(Boolean).length;
+        const enabledModes = [
+          fullSync,
+          currentGameweek,
+          gameweek !== null,
+          discoverApi,
+        ].filter(Boolean).length;
         if (enabledModes !== 1) {
           throw new CliUsageError(
-            'Exactly one mode is required: --full-sync, --current-gameweek, --gameweek N, or --discover-api.',
+            "Exactly one mode is required: --full-sync, --current-gameweek, --gameweek N, or --discover-api.",
           );
         }
       }
@@ -219,14 +244,17 @@ function describeError(error: unknown): string {
 }
 
 function isValueError(error: unknown): boolean {
-  return error instanceof Error && error.name === 'ValueError';
+  return error instanceof Error && error.name === "ValueError";
 }
 
 /**
  * Own the CLI boundary: parse the user's requested mode, wire the runtime modules,
  * and convert sync outcomes into stable process exit codes.
  */
-export async function main(argv: readonly string[] = process.argv.slice(2), deps: CliDeps = createDefaultDeps()): Promise<number> {
+export async function main(
+  argv: readonly string[] = process.argv.slice(2),
+  deps: CliDeps = createDefaultDeps(),
+): Promise<number> {
   const parser = buildParser();
 
   let args: CliArgs;
@@ -252,7 +280,7 @@ export async function main(argv: readonly string[] = process.argv.slice(2), deps
 
   const logger = deps.setupLogging(args.logLevel, deps.settings.LOG_FILE);
   if (args.dryRun) {
-    logger.info('DRY RUN mode — no database writes will occur');
+    logger.info("DRY RUN mode — no database writes will occur");
   }
 
   const dbPath = args.dbPath ?? deps.settings.DB_PATH;
@@ -277,7 +305,12 @@ export async function main(argv: readonly string[] = process.argv.slice(2), deps
       timeoutMs: deps.settings.REQUEST_TIMEOUT * 1000,
     });
     const api = deps.createApi(scraper);
-    const syncer = deps.createSyncer(api, db, args.dryRun, () => scraper.requestCount);
+    const syncer = deps.createSyncer(
+      api,
+      db,
+      args.dryRun,
+      () => scraper.requestCount,
+    );
 
     if (args.fullSync) {
       result = await syncer.fullSync();
@@ -286,56 +319,63 @@ export async function main(argv: readonly string[] = process.argv.slice(2), deps
     } else if (args.gameweek !== null) {
       result = await syncer.gameweekSync(args.gameweek);
     } else if (args.discoverApi) {
-      logger.info('Probing FPL API endpoints…');
+      logger.info("Probing FPL API endpoints…");
       deps.printLine(JSON.stringify(await api.discover(), null, 2));
       return EXIT_SUCCESS;
     }
   } catch (error) {
     if (error instanceof FPLAuthError) {
-      logger.error('Authentication failed: %s', error.message);
+      logger.error("Authentication failed: %s", error.message);
       return EXIT_FATAL;
     }
 
     if (isValueError(error)) {
-      logger.error('Configuration error: %s', describeError(error));
+      logger.error("Configuration error: %s", describeError(error));
       return EXIT_FATAL;
     }
 
     if (db === null) {
-      logger.error('Failed to open database at %s: %s', dbPath, describeError(error));
+      logger.error(
+        "Failed to open database at %s: %s",
+        dbPath,
+        describeError(error),
+      );
       return EXIT_FATAL;
     }
 
-    logger.error('Unexpected fatal error: %s', describeError(error));
+    logger.error("Unexpected fatal error: %s", describeError(error));
     return EXIT_FATAL;
   } finally {
     db?.close();
   }
 
   if (result === null) {
-    logger.error('No CLI mode was dispatched.');
+    logger.error("No CLI mode was dispatched.");
     return EXIT_FATAL;
   }
 
   if (result.errors > 0 && result.playersSynced === 0) {
-    logger.error('Sync failed with no players scraped');
+    logger.error("Sync failed with no players scraped");
     return EXIT_FATAL;
   }
 
   if (result.errors > 0) {
     logger.warn(
-      'Sync completed with %d errors (%d players synced). Re-running is safe.',
+      "Sync completed with %d errors (%d players synced). Re-running is safe.",
       result.errors,
       result.playersSynced,
     );
     return EXIT_PARTIAL;
   }
 
-  logger.info('Sync completed successfully: %s', result.summary());
+  logger.info("Sync completed successfully: %s", result.summary());
   return EXIT_SUCCESS;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   const exitCode = await main();
   process.exit(exitCode);
 }

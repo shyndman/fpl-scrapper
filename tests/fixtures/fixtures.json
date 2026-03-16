@@ -19,8 +19,8 @@
     "stats": [
       {
         "identifier": "goals_scored",
-        "h": [{"value": 1, "element": 200}],
-        "a": [{"value": 1, "element": 150}]
+        "h": [{ "value": 1, "element": 200 }],
+        "a": [{ "value": 1, "element": 150 }]
       }
     ]
   }

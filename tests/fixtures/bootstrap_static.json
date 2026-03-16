@@ -10,7 +10,7 @@
       "is_current": false,
       "is_next": false,
       "finished": true,
-      "chip_plays": [{"chip_name": "bboost", "num_played": 123}],
+      "chip_plays": [{ "chip_name": "bboost", "num_played": 123 }],
       "most_selected": 318,
       "most_transferred_in": 318,
       "most_captained": 318,

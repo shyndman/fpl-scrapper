@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { FPLDatabase } from "../src/database.ts";
-import { Fixture, Gameweek, PlayerHistory, Team } from "../src/models.ts";
+import { Fixture, Gameweek, Team } from "../src/models.ts";
 import {
   transform_bootstrap,
   transform_element_summary,

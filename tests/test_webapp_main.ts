@@ -23,7 +23,8 @@ type ServerStub = FastifyInstance & {
 
 function createServerStub(): ServerStub {
   return {
-    listen: vi.fn<(options: { host: string; port: number }) => Promise<string>>(),
+    listen:
+      vi.fn<(options: { host: string; port: number }) => Promise<string>>(),
   } as unknown as ServerStub;
 }
 
@@ -53,13 +54,17 @@ describe("webapp/server.ts", () => {
     runtime.createApp.mockReturnValue(moduleLevelApp);
 
     const serverModule = await importServerModule();
-    const listenResult = "http://127.0.0.1:8000";
+    const listenResult = "http://127.0.0.1:8292";
     const injectedServer = createServerStub();
     injectedServer.listen.mockResolvedValue(listenResult);
 
-    await expect(serverModule.launch(injectedServer)).resolves.toBe(listenResult);
+    await expect(serverModule.launch(injectedServer)).resolves.toBe(
+      listenResult,
+    );
 
-    expect(runtime.setupLogging).toHaveBeenCalledWith(serverModule.DEFAULT_LOG_LEVEL);
+    expect(runtime.setupLogging).toHaveBeenCalledWith(
+      serverModule.DEFAULT_LOG_LEVEL,
+    );
     expect(injectedServer.listen).toHaveBeenCalledWith({
       host: serverModule.DEFAULT_HOST,
       port: serverModule.DEFAULT_PORT,

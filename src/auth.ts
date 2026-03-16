@@ -198,11 +198,7 @@ export class FPLAuth {
       const rawSession = await readFile(this.#sessionFile, "utf8");
       return JSON.parse(rawSession) as PersistedSession;
     } catch (error) {
-      if (
-        isNodeError(error) &&
-        (error.code === "ENOENT" || error.code === "EACCES")
-      ) {
-        logger.warn("Could not read session file; will re-authenticate");
+      if (isNodeError(error) && error.code === "ENOENT") {
         return null;
       }
 

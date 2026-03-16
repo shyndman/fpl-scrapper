@@ -2,31 +2,21 @@
 
 ## Prerequisites
 
-- Python 3.12 or later
+- Node.js 24 or later
+- npm
 - A Fantasy Premier League account (free to create at fantasy.premierleague.com)
 - ~50 MB disk space for the database
 
-## Step 1: Create a Virtual Environment
+## Step 1: Install Dependencies
 
 ```bash
 cd /path/to/fpl-web-scrapper
-python3 -m venv .venv
-source .venv/bin/activate      # macOS / Linux
-# .venv\Scripts\activate       # Windows
+npm install
 ```
 
-## Step 2: Install Dependencies
+That installs the runtime, CLI entrypoint, dashboard server, Vitest, ESLint, and Prettier in one go.
 
-```bash
-pip install -r requirements.txt
-```
-
-For development (tests, linting):
-```bash
-pip install -r requirements-dev.txt
-```
-
-## Step 3: Configure Credentials
+## Step 2: Configure Credentials
 
 ```bash
 cp config/.env.example .env
@@ -42,16 +32,18 @@ FPL_PASSWORD=your_password
 The `.env` file is git-ignored. Never commit it.
 
 The main player stats endpoints are **public** (no login required). Credentials are used for:
+
 - Accessing `my-team` endpoints if you want your personal squad data
 - Refreshing sessions if FPL introduces auth on public endpoints
 
-## Step 4: First Run
+## Step 3: First Run
 
 ```bash
-python -m src.main --full-sync
+npm run cli -- --full-sync
 ```
 
 This will:
+
 1. Fetch all teams, gameweeks, and ~700 players from `bootstrap-static`
 2. Fetch all fixtures
 3. Fetch live stats for the current gameweek
@@ -59,11 +51,12 @@ This will:
 5. Write everything to `data/fpl.db`
 
 To do a dry run first (no DB writes):
+
 ```bash
-python -m src.main --full-sync --dry-run
+npm run cli -- --full-sync --dry-run
 ```
 
-## Step 5: Verify the Database
+## Step 4: Verify the Database
 
 ```bash
 sqlite3 data/fpl.db
@@ -90,31 +83,37 @@ WHERE p.web_name = 'Salah'
 ORDER BY ph.round;
 ```
 
-## Step 6: Launch the Dashboard (optional)
+## Step 5: Launch the Dashboard (optional)
 
 The dashboard webapp lets you explore the database in a browser — player cards, charts, team comparisons, and more.
 
 ```bash
-# Install webapp dependencies (same venv, run once)
-pip install -r webapp/requirements.txt
-
-# Start the server
-python -m webapp
+npm run web
 ```
 
-Open **http://127.0.0.1:8000**. Press `Ctrl+C` to stop.
+Open **http://127.0.0.1:8292**. Press `Ctrl+C` to stop.
 
 Player photos and team badges download from the FPL CDN in the background on first startup. Subsequent restarts skip files that already exist.
 
 For the full webapp documentation — all pages, the JSON API, debugging — see [../webapp/README.md](../webapp/README.md).
+
+## Step 6: Quality Checks (optional)
+
+```bash
+npm test
+npm run lint
+npm run typecheck
+npx prettier --check .
+```
 
 ## Step 7: Set Up the Cron Job (OpenClaw)
 
 See [OPENCLAW.md](OPENCLAW.md) for the full integration guide.
 
 Short version — after each gameweek:
+
 ```bash
-cd /path/to/fpl-web-scrapper && python -m src.main --current-gameweek
+cd /path/to/fpl-web-scrapper && npm run cli -- --current-gameweek
 ```
 
 ## Troubleshooting
